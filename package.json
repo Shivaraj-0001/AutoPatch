@@ -1,0 +1,33 @@
+{
+  "name": "autopatch",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Autonomous Multi-Agent Open-Source Contribution System",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.8",
+    "lucide-react": "^1.59.0",
+    "next": "^16.4.2",
+    "openai": "^7.36.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "uuid": "^14.0.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/uuid": "^10.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}
