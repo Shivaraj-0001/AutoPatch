@@ -9,8 +9,10 @@ import {
 import {
   FetchIssueRequestSchema,
   StartRunRequestSchema,
+  RefineRunRequestSchema,
   ApiErrorSchema,
 } from './api-requests';
+
 
 
 describe('agent-outputs schemas', () => {
@@ -178,5 +180,29 @@ describe('api-requests schemas', () => {
     const parsed = ApiErrorSchema.safeParse(errorPayload);
     expect(parsed.success).toBe(true);
   });
+
+  it('validates refine run request with instructions and suggestions', () => {
+    const valid = {
+      instructions: 'Please fix edge case on empty strings',
+      selectedSuggestions: ['Add null check', 'Refactor regex'],
+    };
+    const parsed = RefineRunRequestSchema.safeParse(valid);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.selectedSuggestions).toHaveLength(2);
+    }
+  });
+
+  it('provides default empty array for selectedSuggestions when omitted', () => {
+    const valid = {
+      instructions: 'Minor style fix',
+    };
+    const parsed = RefineRunRequestSchema.safeParse(valid);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.selectedSuggestions).toEqual([]);
+    }
+  });
 });
+
 

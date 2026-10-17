@@ -44,6 +44,14 @@ export const StartRunRequestSchema = z.object({
 
 export type StartRunRequest = z.infer<typeof StartRunRequestSchema>;
 
+export const RefineRunRequestSchema = z.object({
+  instructions: z.string().max(2000).optional(),
+  selectedSuggestions: z.array(z.string()).default([]),
+});
+
+export type RefineRunRequest = z.infer<typeof RefineRunRequestSchema>;
+
+
 // ─── API Error Response ─────────────────────────────────────────────────────
 
 export const ApiErrorSchema = z.object({
