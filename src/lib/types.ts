@@ -1,3 +1,6 @@
+/**
+ * Specialist agents participating in the autonomous contribution workflow.
+ */
 export type AgentName =
   | 'issue-analyst'
   | 'repository-scout'
@@ -5,8 +8,44 @@ export type AgentName =
   | 'coding-agent'
   | 'review-agent';
 
+export const AGENT_NAMES: readonly AgentName[] = [
+  'issue-analyst',
+  'repository-scout',
+  'implementation-planner',
+  'coding-agent',
+  'review-agent',
+] as const;
+
+/**
+ * Type guard for AgentName strings.
+ */
+export function isAgentName(value: unknown): value is AgentName {
+  return typeof value === 'string' && (AGENT_NAMES as readonly string[]).includes(value);
+}
+
+/**
+ * Execution status of an overall workflow run.
+ */
 export type RunStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 
+export const RUN_STATUSES: readonly RunStatus[] = [
+  'queued',
+  'running',
+  'completed',
+  'failed',
+  'cancelled',
+] as const;
+
+/**
+ * Type guard for RunStatus strings.
+ */
+export function isRunStatus(value: unknown): value is RunStatus {
+  return typeof value === 'string' && (RUN_STATUSES as readonly string[]).includes(value);
+}
+
+/**
+ * Individual agent execution lifecycle status.
+ */
 export type AgentStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
 
 export interface RunHistoryItem {
@@ -275,3 +314,14 @@ export interface PublicConfig {
   maxRevisionAttempts: number;
   scoutMaxFiles?: number;
 }
+
+/**
+ * Standard API response wrapper for client-server communication.
+ */
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  details?: unknown;
+}
+
