@@ -6,6 +6,12 @@ import {
   CodingProposalSchema,
   ReviewReportSchema,
 } from './agent-outputs';
+import {
+  FetchIssueRequestSchema,
+  StartRunRequestSchema,
+  ApiErrorSchema,
+} from './api-requests';
+
 
 describe('agent-outputs schemas', () => {
   const sampleIssueAnalysis = {
@@ -123,3 +129,54 @@ describe('agent-outputs schemas', () => {
     expect(parsed.success).toBe(false);
   });
 });
+
+describe('api-requests schemas', () => {
+  it('accepts valid fetch issue request', () => {
+    const valid = {
+      repoUrl: 'https://github.com/facebook/react',
+      issueNumber: 1234,
+    };
+    const parsed = FetchIssueRequestSchema.safeParse(valid);
+    expect(parsed.success).toBe(true);
+  });
+
+  it('rejects non-github URLs in fetch issue request', () => {
+    const invalid = {
+      repoUrl: 'https://gitlab.com/owner/repo',
+      issueNumber: 1234,
+    };
+    const parsed = FetchIssueRequestSchema.safeParse(invalid);
+    expect(parsed.success).toBe(false);
+  });
+
+  it('accepts valid start run request with optional parameters', () => {
+    const valid = {
+      repoUrl: 'https://github.com/facebook/react',
+      issueNumber: 42,
+      additionalInstructions: 'Focus on minimal diff',
+      targetBranch: 'main',
+    };
+    const parsed = StartRunRequestSchema.safeParse(valid);
+    expect(parsed.success).toBe(true);
+  });
+
+  it('rejects invalid issue numbers', () => {
+    const invalid = {
+      repoUrl: 'https://github.com/facebook/react',
+      issueNumber: -1,
+    };
+    const parsed = StartRunRequestSchema.safeParse(invalid);
+    expect(parsed.success).toBe(false);
+  });
+
+  it('validates api error schema structure', () => {
+    const errorPayload = {
+      error: 'Not found',
+      code: 'ERR_NOT_FOUND',
+      details: { resource: 'issue' },
+    };
+    const parsed = ApiErrorSchema.safeParse(errorPayload);
+    expect(parsed.success).toBe(true);
+  });
+});
+
