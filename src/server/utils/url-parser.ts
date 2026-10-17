@@ -30,7 +30,7 @@ export function parseGitHubUrl(url: string): {
     }
 
     let issueNumber: number | undefined;
-    if (parts.length >= 4 && parts[2] === 'issues') {
+    if (parts.length >= 4 && (parts[2] === 'issues' || parts[2] === 'pull')) {
       const num = parseInt(parts[3], 10);
       if (!isNaN(num) && num > 0) {
         issueNumber = num;
@@ -44,6 +44,23 @@ export function parseGitHubUrl(url: string): {
 }
 
 /**
+ * Parse shorthand repository reference (e.g. "owner/repo" or "owner/repo#123").
+ */
+export function parseShorthandRepo(input: string): {
+  owner: string;
+  repo: string;
+  issueNumber?: number;
+} | null {
+  const trimmed = input.trim();
+  const match = trimmed.match(/^([a-zA-Z0-9._-]+)\/([a-zA-Z0-9._-]+)(?:#(\d+))?$/);
+  if (!match) return null;
+  const [, owner, rawRepo, issueStr] = match;
+  const repo = rawRepo.replace(/\.git$/, '');
+  const issueNumber = issueStr ? parseInt(issueStr, 10) : undefined;
+  return { owner, repo, issueNumber };
+}
+
+/**
  * Parse a GitHub issue URL or standalone issue number.
  */
 export function parseIssueInput(input: string): number | null {
@@ -53,7 +70,7 @@ export function parseIssueInput(input: string): number | null {
     return num;
   }
 
-  // URL with issue number
+  // URL with issue number or pull number
   try {
     const parsed = parseGitHubUrl(input);
     if (parsed?.issueNumber) {
@@ -61,6 +78,12 @@ export function parseIssueInput(input: string): number | null {
     }
   } catch {
     // not a URL
+  }
+
+  // Shorthand owner/repo#123 format
+  const shorthand = parseShorthandRepo(input);
+  if (shorthand?.issueNumber) {
+    return shorthand.issueNumber;
   }
 
   // #123 format
@@ -83,3 +106,15 @@ function isValidGitHubName(name: string): boolean {
 export function buildRepoUrl(owner: string, repo: string): string {
   return `https://github.com/${owner}/${repo}`;
 }
+
+/**
+ * Format a canonical issue reference string (e.g. "owner/repo#123").
+ */
+export function formatIssueIdentifier(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): string {
+  return `${owner}/${repo}#${issueNumber}`;
+}
+
