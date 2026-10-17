@@ -60,10 +60,27 @@ describe('url-parser', () => {
       expect(parseGitHubUrl('https://google.com')).toBeNull();
     });
 
-    it('returns null for invalid URLs', () => {
+    it('returns null for invalid URLs and non-repository subpaths', () => {
       expect(parseGitHubUrl('not-a-url')).toBeNull();
       expect(parseGitHubUrl('https://github.com')).toBeNull();
       expect(parseGitHubUrl('https://github.com/onlyowner')).toBeNull();
+      expect(parseGitHubUrl('https://github.com/owner/repo/settings')).toBeNull();
+      expect(parseGitHubUrl('https://github.com/owner/repo/actions')).toBeNull();
+      expect(parseGitHubUrl('https://github.com/owner/repo/issues')).toBeNull();
+      expect(parseGitHubUrl('https://github.com/owner/repo/issues/notanumber')).toBeNull();
+    });
+
+    it('parses tree / branch specifier URL', () => {
+      expect(parseGitHubUrl('https://github.com/facebook/react/tree/main')).toEqual({
+        owner: 'facebook',
+        repo: 'react',
+        branch: 'main',
+      });
+      expect(parseGitHubUrl('https://github.com/facebook/react/tree/feat/cool-stuff')).toEqual({
+        owner: 'facebook',
+        repo: 'react',
+        branch: 'feat/cool-stuff',
+      });
     });
   });
 
@@ -104,6 +121,15 @@ describe('url-parser', () => {
       expect(parseIssueInput('  123  ')).toBe(123);
     });
 
+    it('parses numbers with leading zeros or plus signs', () => {
+      expect(parseIssueInput('007')).toBe(7);
+      expect(parseIssueInput('+42')).toBe(42);
+      expect(parseIssueInput('  007  ')).toBe(7);
+      expect(parseIssueInput('#007')).toBe(7);
+      expect(parseIssueInput('#+42')).toBe(42);
+      expect(parseIssueInput('facebook/react#007')).toBe(7);
+    });
+
     it('parses #number format', () => {
       expect(parseIssueInput('#99')).toBe(99);
       expect(parseIssueInput('  #1024  ')).toBe(1024);
@@ -125,6 +151,8 @@ describe('url-parser', () => {
       expect(parseIssueInput('abc')).toBeNull();
       expect(parseIssueInput('-5')).toBeNull();
       expect(parseIssueInput('0')).toBeNull();
+      expect(parseIssueInput('+0')).toBeNull();
+      expect(parseIssueInput('000')).toBeNull();
     });
   });
 
