@@ -144,3 +144,33 @@ export const ReviewReportSchema = z.object({
 
 export type ReviewReport = z.infer<typeof ReviewReportSchema>;
 export type ReviewFinding = z.infer<typeof ReviewFindingSchema>;
+
+/**
+ * Agent output schemas mapped by agent name.
+ */
+export const AGENT_OUTPUT_SCHEMAS = {
+  'issue-analyst': IssueAnalysisSchema,
+  'repository-scout': RepositoryContextSchema,
+  'implementation-planner': ImplementationPlanSchema,
+  'coding-agent': CodingProposalSchema,
+  'review-agent': ReviewReportSchema,
+} as const;
+
+export type AgentOutputSchemaMap = {
+  'issue-analyst': IssueAnalysis;
+  'repository-scout': RepositoryContext;
+  'implementation-planner': ImplementationPlan;
+  'coding-agent': CodingProposal;
+  'review-agent': ReviewReport;
+};
+
+/**
+ * Validates untyped agent output data using the corresponding agent's Zod schema.
+ */
+export function validateAgentOutput<K extends keyof typeof AGENT_OUTPUT_SCHEMAS>(
+  agentName: K,
+  data: unknown
+) {
+  return AGENT_OUTPUT_SCHEMAS[agentName].safeParse(data);
+}
+

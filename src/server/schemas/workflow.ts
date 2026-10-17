@@ -121,18 +121,31 @@ export interface WorkflowRun {
 
 // ─── Workflow Events ────────────────────────────────────────────────────────
 
-export type WorkflowEventType =
-  | 'run.created'
-  | 'agent.started'
-  | 'agent.progress'
-  | 'agent.completed'
-  | 'agent.failed'
-  | 'artifact.created'
-  | 'review.finding'
-  | 'revision.started'
-  | 'run.completed'
-  | 'run.failed'
-  | 'run.cancelled';
+export const WORKFLOW_EVENT_TYPES = [
+  'run.created',
+  'agent.started',
+  'agent.progress',
+  'agent.completed',
+  'agent.failed',
+  'artifact.created',
+  'review.finding',
+  'revision.started',
+  'run.completed',
+  'run.failed',
+  'run.cancelled',
+] as const;
+
+export type WorkflowEventType = (typeof WORKFLOW_EVENT_TYPES)[number];
+
+/**
+ * Type guard for WorkflowEventType.
+ */
+export function isWorkflowEventType(value: unknown): value is WorkflowEventType {
+  return (
+    typeof value === 'string' &&
+    (WORKFLOW_EVENT_TYPES as readonly string[]).includes(value)
+  );
+}
 
 export interface WorkflowEvent {
   id: string;
