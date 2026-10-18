@@ -63,6 +63,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           className="btn btn-secondary"
           style={{ fontSize: '0.8rem', padding: '6px 12px' }}
           aria-label="Refresh system configuration"
+          title="Refresh system configuration and inference parameters"
         >
           <RefreshCw size={14} className={loading ? 'animate-spin' : undefined} />
           <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
@@ -123,6 +124,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <span style={{ color: 'var(--text-secondary)' }}>Repository Scout File Limit</span>
               <span style={{ fontWeight: 600, color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
                 {`Max ${scoutLimit} files / 100KB per file`}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>GitHub API Token</span>
+              <span style={{ fontWeight: 600, color: config?.githubTokenConfigured ? 'var(--accent-emerald)' : 'var(--accent-amber)', fontSize: '0.8rem' }}>
+                {config?.githubTokenConfigured ? 'Configured (Authenticated)' : 'Not Configured (Public Only)'}
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>

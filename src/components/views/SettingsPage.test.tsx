@@ -83,7 +83,7 @@ describe('SettingsPage Component', () => {
     expect(html).toContain('Max 60 files / 100KB per file');
   });
 
-  it('renders safety validator specifications', () => {
+  it('renders safety validator specifications and GitHub token status', () => {
     const html = renderToString(
       React.createElement(SettingsPage, {
         config: mockConfig,
@@ -93,9 +93,11 @@ describe('SettingsPage Component', () => {
 
     expect(html).toContain('Patch Safety Validator');
     expect(html).toContain('Active (Traversal &amp; Sensitive Protection)');
+    expect(html).toContain('GitHub API Token');
+    expect(html).toContain('Configured (Authenticated)');
   });
 
-  it('renders refresh button with accessible attributes', () => {
+  it('renders refresh button with accessible attributes and tooltip', () => {
     const html = renderToString(
       React.createElement(SettingsPage, {
         config: mockConfig,
@@ -104,6 +106,7 @@ describe('SettingsPage Component', () => {
     );
 
     expect(html).toContain('aria-label="Refresh system configuration"');
+    expect(html).toContain('title="Refresh system configuration and inference parameters"');
     expect(html).toContain('Refresh');
   });
 
