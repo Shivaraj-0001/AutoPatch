@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { RefineRunRequestSchema } from '@/server/schemas/api-requests';
 import * as orchestrator from '@/server/services/orchestrator';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,18 @@ export async function POST(
     }
 
     const body = await request.json().catch(() => ({}));
-    const { instructions, selectedSuggestions } = body || {};
+    const parsed = RefineRunRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: 'Invalid request',
+          details: parsed.error.flatten().fieldErrors,
+        },
+        { status: 400 },
+      );
+    }
+
+    const { instructions, selectedSuggestions } = parsed.data;
 
     const updatedRun = await orchestrator.refineRun(id, {
       instructions,

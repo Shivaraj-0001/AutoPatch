@@ -13,12 +13,18 @@ export async function POST(request: NextRequest) {
     const clientKey = request.headers.get('x-forwarded-for') || 'unknown';
     const rateCheck = runLimiter.check(clientKey);
     if (!rateCheck.allowed) {
+      const retryAfterSeconds = Math.ceil((rateCheck.retryAfterMs || 1000) / 1000);
       return NextResponse.json(
         {
           error: 'Too many requests. Please wait before starting another run.',
           retryAfterMs: rateCheck.retryAfterMs,
         },
-        { status: 429 },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(retryAfterSeconds),
+          },
+        },
       );
     }
 
@@ -76,6 +82,11 @@ export async function GET() {
       createdAt: run.createdAt,
       updatedAt: run.updatedAt,
     })),
+    {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      },
+    },
   );
 }
 

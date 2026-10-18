@@ -14,7 +14,11 @@ export async function GET(
   }
 
   const safeState = orchestrator.getSafeRunState(run);
-  return NextResponse.json(safeState);
+  return NextResponse.json(safeState, {
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+    },
+  });
 }
 
 export async function DELETE(

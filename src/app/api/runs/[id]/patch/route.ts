@@ -50,8 +50,9 @@ export async function GET(
 
   return new Response(patchFormatted, {
     headers: {
-      'Content-Type': 'text/plain',
+      'Content-Type': 'text/plain; charset=utf-8',
       'Content-Disposition': `attachment; filename="${filename}"`,
+      'Cache-Control': 'private, no-cache',
     },
   });
 }
