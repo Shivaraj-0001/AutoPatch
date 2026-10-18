@@ -94,6 +94,7 @@ describe('AgentDetailsModal Component', () => {
     expect(html).toContain('Issue Analyst Output');
     expect(html).toContain('Formal specification &amp; extracted acceptance criteria');
     expect(html).toContain('aria-label="Close modal"');
+    expect(html).toContain('aria-label="Close details modal"');
     expect(html).toContain('Structured');
     expect(html).toContain('Raw JSON');
     expect(html).toContain('Copy JSON');

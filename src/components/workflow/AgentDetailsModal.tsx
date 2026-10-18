@@ -55,6 +55,17 @@ export const AgentDetailsModal: React.FC<AgentDetailsModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [userSelectedIdx, setUserSelectedIdx] = useState<number | null>(null);
 
+  React.useEffect(() => {
+    if (!agentName) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [agentName, onClose]);
+
   const allExecutions = useMemo(() => {
     if (!agentName) return [];
     if (Array.isArray(run.agentExecutions)) {
@@ -1042,6 +1053,8 @@ export const AgentDetailsModal: React.FC<AgentDetailsModalProps> = ({
                 <button
                   type="button"
                   onClick={handleCopyRaw}
+                  aria-label={copied ? 'Raw JSON copied to clipboard' : 'Copy raw JSON artifact to clipboard'}
+                  title="Copy JSON to clipboard"
                   className="btn btn-secondary"
                   style={{ fontSize: '0.75rem', padding: '5px 10px' }}
                 >
@@ -1092,6 +1105,7 @@ export const AgentDetailsModal: React.FC<AgentDetailsModalProps> = ({
               <button
                 type="button"
                 onClick={handleCopyRaw}
+                aria-label="Copy raw JSON artifact"
                 className="btn btn-ghost"
                 style={{ fontSize: '0.8rem', padding: '6px 12px' }}
               >
@@ -1099,7 +1113,13 @@ export const AgentDetailsModal: React.FC<AgentDetailsModalProps> = ({
                 <span>Copy JSON</span>
               </button>
             )}
-            <button onClick={onClose} className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '6px 14px' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close details modal"
+              className="btn btn-secondary"
+              style={{ fontSize: '0.8rem', padding: '6px 14px' }}
+            >
               Close
             </button>
           </div>
