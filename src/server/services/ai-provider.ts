@@ -59,6 +59,15 @@ export function maskKey(key: string): string {
 }
 
 export function parseCooldownMs(error: unknown): number {
+  if (error && typeof error === 'object') {
+    const headers = (error as { headers?: Record<string, string> }).headers;
+    if (headers && headers['retry-after']) {
+      const retryAfterSec = parseFloat(headers['retry-after']);
+      if (!isNaN(retryAfterSec) && retryAfterSec > 0) {
+        return Math.ceil(retryAfterSec * 1000) + 1000;
+      }
+    }
+  }
   if (error instanceof OpenAI.APIError || error instanceof Error) {
     const msg = error.message;
     const match = msg.match(/try again in (\d+(?:\.\d+)?)\s*(s|ms|m)?/i);
@@ -159,8 +168,15 @@ export class ApiKeyPool {
     if (!slot) return;
     const now = Date.now();
     slot.cooldownUntil = Math.max(slot.cooldownUntil, now + durationMs);
-    // Mark capacity as consumed in the sliding window
-    slot.usageHistory.push({ timestamp: now, tokens: this.tpmLimit });
+
+    this.pruneSlot(slot, now);
+    const currentUsage = slot.usageHistory.reduce((sum, h) => sum + h.tokens, 0);
+    const deficit = Math.max(0, this.tpmLimit - currentUsage);
+    if (deficit > 0) {
+      // Saturated capacity rolls out when the cooldown expires
+      const simulatedTimestamp = Math.max(now - this.windowMs + 1, now + durationMs - this.windowMs);
+      slot.usageHistory.push({ timestamp: simulatedTimestamp, tokens: deficit });
+    }
   }
 
   public calculateWaitUntilAvailable(slot: KeySlot, neededTokens: number, now: number = Date.now()): number {
@@ -170,19 +186,20 @@ export class ApiKeyPool {
       waitMs = Math.max(waitMs, slot.cooldownUntil - now);
     }
 
+    const effectiveNeeded = Math.min(neededTokens, this.tpmLimit);
     let currentTokens = slot.usageHistory.reduce((acc, h) => acc + h.tokens, 0);
-    if (currentTokens + neededTokens <= this.tpmLimit) {
+    if (currentTokens + effectiveNeeded <= this.tpmLimit) {
       return waitMs;
     }
 
-    // Determine when enough tokens roll out of the 60s sliding window
+    // Determine when enough tokens roll out of the sliding window
     const sorted = [...slot.usageHistory].sort((a, b) => a.timestamp - b.timestamp);
     if (sorted.length > 0) {
       for (const record of sorted) {
         currentTokens -= record.tokens;
         const recordExpiryWait = Math.max(1, record.timestamp + this.windowMs - now);
         waitMs = Math.max(waitMs, recordExpiryWait);
-        if (currentTokens + neededTokens <= this.tpmLimit) {
+        if (currentTokens + effectiveNeeded <= this.tpmLimit) {
           break;
         }
       }
@@ -217,14 +234,16 @@ export class ApiKeyPool {
       return slot.cooldownUntil <= now;
     });
 
+    const effectiveNeeded = Math.min(estimatedTokens, this.tpmLimit);
+
     // Check which slots have enough TPM headroom for estimatedTokens
     const slotsWithHeadroom = nonCooldownSlots.filter((slot) => {
       const used = slot.usageHistory.reduce((sum, h) => sum + h.tokens, 0);
-      return used + estimatedTokens <= this.tpmLimit;
+      return used + effectiveNeeded <= this.tpmLimit;
     });
 
     if (slotsWithHeadroom.length > 0) {
-      // Pick the key with the least tokens used in the current 60s window
+      // Pick the key with the least tokens used in the current window
       // Tie-breaker: least recently used
       slotsWithHeadroom.sort((a, b) => {
         const usageA = a.usageHistory.reduce((sum, h) => sum + h.tokens, 0);
@@ -241,7 +260,7 @@ export class ApiKeyPool {
     let minWaitMs = Infinity;
 
     for (const slot of candidateSlots) {
-      const wait = this.calculateWaitUntilAvailable(slot, estimatedTokens, now);
+      const wait = this.calculateWaitUntilAvailable(slot, effectiveNeeded, now);
       if (wait < minWaitMs) {
         minWaitMs = wait;
         bestSlot = slot;
@@ -268,6 +287,7 @@ export class ApiKeyPool {
   public resetCooldowns(): void {
     for (const slot of this.slots) {
       slot.cooldownUntil = 0;
+      slot.usageHistory = [];
     }
   }
 }
@@ -288,15 +308,15 @@ export async function chatCompletion(
     throw new AiProviderError('AI request was aborted', 'timeout');
   }
 
-  // Estimate prompt tokens (~3.8 characters per token)
+  // Estimate prompt tokens with realistic ratio for source code/JSON (~2.8 chars per token + message format overhead)
   const totalChars = messages.reduce((acc, m) => acc + (m.content ? m.content.length : 0), 0);
-  const estimatedPromptTokens = Math.ceil(totalChars / 3.8);
+  const estimatedPromptTokens = Math.ceil(totalChars / 2.8) + messages.length * 4 + 10;
 
   // Groq's free tier has an 8,000 TPM limit.
-  // Ensure promptTokens + activeMaxTokens does not exceed 7,800 to avoid pre-flight 413 rejection.
-  const maxSafeTokens = Math.max(1024, 7800 - estimatedPromptTokens);
+  // Ensure promptTokens + activeMaxTokens does not exceed 7,400 to maintain safe headroom and avoid pre-flight 413 rejection.
+  const safeTpmCeiling = Math.min(apiKeyPool.tpmLimit - 600, 7400);
+  const maxSafeTokens = Math.max(256, safeTpmCeiling - estimatedPromptTokens);
   let activeMaxTokens = Math.min(maxTokens, maxSafeTokens);
-  const estimatedTotalTokens = estimatedPromptTokens + activeMaxTokens;
 
   const totalKeys = apiKeyPool.getSlots().length;
   // Allow enough attempts to cycle through all N keys plus retries
@@ -309,16 +329,43 @@ export async function chatCompletion(
       throw new AiProviderError('AI request was aborted', 'timeout');
     }
 
-    const { slot, waitMs } = apiKeyPool.selectBestKey(estimatedTotalTokens, triedKeysInRequest);
+    // Pacing loop: wait until an API key slot actually has headroom in the sliding window
+    let selectedSlot: KeySlot | null = null;
+    while (true) {
+      if (signal?.aborted) {
+        throw new AiProviderError('AI request was aborted', 'timeout');
+      }
 
-    if (waitMs > 0) {
-      // If we must wait, clamp waitMs to reasonable pacing (max 20s per step)
-      const clampedWait = Math.min(waitMs, 20_000);
+      const currentTotalTokens = estimatedPromptTokens + activeMaxTokens;
+      const { slot, waitMs } = apiKeyPool.selectBestKey(currentTotalTokens, triedKeysInRequest);
+
+      if (waitMs <= 0) {
+        selectedSlot = slot;
+        break;
+      }
+
+      // If all keys are constrained, sleep for the required wait time (up to 30s per step) and re-check
+      const sleepMs = Math.min(waitMs, 30_000);
       console.warn(
-        `[AI Provider] Pacing request for token replenishment (${Math.round(clampedWait / 1000)}s)...`,
+        `[AI Provider] Pacing request for token replenishment (${Math.ceil(waitMs / 1000)}s needed, waiting ${Math.ceil(sleepMs / 1000)}s)...`,
       );
-      await new Promise((r) => setTimeout(r, clampedWait));
+
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, sleepMs);
+        if (signal) {
+          signal.addEventListener('abort', () => {
+            clearTimeout(timer);
+            resolve();
+          }, { once: true });
+        }
+      });
+
+      if (signal?.aborted) {
+        throw new AiProviderError('AI request was aborted', 'timeout');
+      }
     }
+
+    const slot = selectedSlot!;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -349,8 +396,8 @@ export async function chatCompletion(
         );
       }
 
-      // Record successful usage
-      const totalTokens = response.usage?.total_tokens || estimatedTotalTokens;
+      // Record successful usage in sliding window
+      const totalTokens = response.usage?.total_tokens || (estimatedPromptTokens + activeMaxTokens);
       apiKeyPool.recordUsage(slot.key, totalTokens);
 
       return {
@@ -377,8 +424,8 @@ export async function chatCompletion(
           `[AI Provider] Key ${maskKey(slot.key)} hit rate limit. Cooling down for ${Math.round(cooldownMs / 1000)}s. Attempt ${attempt + 1}/${maxAttempts}. Rotating key...`,
         );
 
-        // Reduce activeMaxTokens slightly if request was large
-        activeMaxTokens = Math.min(activeMaxTokens, 2500);
+        // Reduce activeMaxTokens if request was rejected or large
+        activeMaxTokens = Math.max(256, Math.min(activeMaxTokens - 500, 2000));
 
         // If we haven't tried all keys yet, rotate immediately without sleeping!
         if (triedKeysInRequest.size < totalKeys) {
