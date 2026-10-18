@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import { Badge } from './Badge';
 
@@ -60,5 +60,36 @@ describe('Badge Component', () => {
     expect(html).toContain('badge-clickable');
     expect(html).toContain('role="button"');
     expect(html).toContain('tabindex="0"');
+  });
+
+  it('triggers onClick on Enter or Space key press for keyboard accessibility', () => {
+    let clicked = false;
+    const element = Badge({
+      children: 'Clickable',
+      onClick: () => {
+        clicked = true;
+      },
+    }) as React.ReactElement<React.HTMLAttributes<HTMLSpanElement>>;
+
+    const props = element.props;
+    expect(props.role).toBe('button');
+    expect(props.tabIndex).toBe(0);
+
+    const preventDefault = vi.fn();
+
+    // Test Enter key
+    props.onKeyDown?.({ key: 'Enter', preventDefault } as unknown as React.KeyboardEvent<HTMLSpanElement>);
+    expect(preventDefault).toHaveBeenCalled();
+    expect(clicked).toBe(true);
+
+    // Test Space key
+    clicked = false;
+    props.onKeyDown?.({ key: ' ', preventDefault } as unknown as React.KeyboardEvent<HTMLSpanElement>);
+    expect(clicked).toBe(true);
+
+    // Test other keys do not activate
+    clicked = false;
+    props.onKeyDown?.({ key: 'Escape', preventDefault } as unknown as React.KeyboardEvent<HTMLSpanElement>);
+    expect(clicked).toBe(false);
   });
 });
