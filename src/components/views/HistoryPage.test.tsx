@@ -238,6 +238,9 @@ describe('HistoryPage Component', () => {
     expect(html).toContain('All Statuses (5)');
     expect(html).toContain('Completed');
     expect(html).toContain('Running');
+    expect(html).toContain('Failed');
+    expect(html).toContain('Cancelled');
+    expect(html).toContain('Queued');
   });
 
   it('applies custom className, id, and style to root element', () => {

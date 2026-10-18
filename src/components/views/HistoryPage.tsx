@@ -276,6 +276,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
               <option value="running">Running</option>
               <option value="failed">Failed</option>
               <option value="cancelled">Cancelled</option>
+              <option value="queued">Queued</option>
             </select>
           </div>
         </div>
@@ -315,7 +316,11 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
           }}
         >
           <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
-            {`No runs match your search query "${searchQuery}"`}
+            {searchQuery.trim() && statusFilter !== 'all'
+              ? `No runs match "${searchQuery}" with status "${statusFilter}"`
+              : searchQuery.trim()
+                ? `No runs match your search query "${searchQuery}"`
+                : `No runs found with status "${statusFilter}"`}
           </p>
           <button
             type="button"
