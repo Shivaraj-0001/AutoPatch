@@ -13,12 +13,18 @@ describe('GET /api/config', () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
+    expect(data.service).toBe('autopatch');
+    expect(data.version).toBe('1.0.0');
+    expect(data).toHaveProperty('environment');
     expect(data).toHaveProperty('aiProvider');
     expect(data).toHaveProperty('aiConfigured');
     expect(data).toHaveProperty('githubTokenConfigured');
     expect(data).toHaveProperty('maxRevisionAttempts');
     expect(data).toHaveProperty('scoutMaxFiles');
     expect(data.scoutMaxFiles).toBeGreaterThanOrEqual(60);
+
+    // Verify cache control header
+    expect(res.headers.get('Cache-Control')).toContain('no-store');
 
     // Verify secrets are strictly stripped
     expect(data).not.toHaveProperty('apiKey');
@@ -32,6 +38,7 @@ describe('GET /api/config', () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
+    expect(data.service).toBe('autopatch');
     expect(data).toHaveProperty('aiProvider');
     expect(data).toHaveProperty('aiConfigured');
   });
