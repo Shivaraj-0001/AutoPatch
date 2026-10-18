@@ -67,18 +67,36 @@ export class GitHubApiError extends Error {
 
 const fileCache = new Map<string, { content: string; fetchedAt: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_ENTRIES = 200;
 
 function getCached(key: string): string | null {
   const entry = fileCache.get(key);
-  if (entry && Date.now() - entry.fetchedAt < CACHE_TTL) {
-    return entry.content;
+  if (entry) {
+    if (Date.now() - entry.fetchedAt < CACHE_TTL) {
+      // Refresh order for LRU retention
+      fileCache.delete(key);
+      fileCache.set(key, entry);
+      return entry.content;
+    }
+    fileCache.delete(key);
   }
-  fileCache.delete(key);
   return null;
 }
 
 function setCache(key: string, content: string): void {
+  if (fileCache.has(key)) {
+    fileCache.delete(key);
+  } else if (fileCache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = fileCache.keys().next().value;
+    if (oldestKey) {
+      fileCache.delete(oldestKey);
+    }
+  }
   fileCache.set(key, { content, fetchedAt: Date.now() });
+}
+
+export function clearFileCache(): void {
+  fileCache.clear();
 }
 
 // ─── Public API ─────────────────────────────────────────────────────────────
@@ -226,8 +244,13 @@ export async function getFileContent(
     }
 
     return null;
-  } catch {
-    return null;
+  } catch (error) {
+    // 404 indicates the requested file does not exist in the repo
+    if (error instanceof GitHubApiError && error.statusCode === 404) {
+      return null;
+    }
+    // Propagate rate limits, aborted requests, and other API failures
+    throw error;
   }
 }
 

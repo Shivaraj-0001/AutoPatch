@@ -8,6 +8,7 @@ import {
   buildFileTree,
   fetchMultipleFiles,
   GitHubApiError,
+  clearFileCache,
 } from './github';
 
 describe('github service', () => {
@@ -15,6 +16,7 @@ describe('github service', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    clearFileCache();
   });
 
   afterEach(() => {
@@ -255,5 +257,66 @@ describe('github service', () => {
     const result = await fetchMultipleFiles('test-owner', 'test-repo', ['file1.ts', 'file2.ts']);
     expect(result['file1.ts']).toBe(file1);
     expect(result['file2.ts']).toBe(file2);
+  });
+
+  it('getFileContent returns null on 404 but rethrows rate limit and API errors', async () => {
+    // 404 should return null (file does not exist)
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      headers: new Headers(),
+    } as unknown as Response);
+
+    const nonExistent = await getFileContent('test-owner', 'test-repo', 'missing.txt');
+    expect(nonExistent).toBeNull();
+
+    // 403 Rate limit should throw GitHubApiError so caller is aware
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      headers: new Headers({
+        'x-ratelimit-remaining': '0',
+        'x-ratelimit-reset': '1800000000',
+      }),
+    } as unknown as Response);
+
+    await expect(getFileContent('test-owner', 'test-repo', 'important.ts')).rejects.toThrowError(
+      /GitHub API rate limit exceeded/,
+    );
+  });
+
+  it('fileCache respects size bounds by evicting oldest entries', async () => {
+    // Fetch 205 distinct files
+    for (let i = 0; i < 205; i++) {
+      const content = `content-${i}`;
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          type: 'file',
+          size: content.length,
+          encoding: 'base64',
+          content: Buffer.from(content).toString('base64'),
+        }),
+      } as unknown as Response);
+
+      await getFileContent('test-owner', 'test-repo', `file-${i}.txt`);
+    }
+
+    // Earliest file (file-0.txt) should have been evicted from the 200-entry cache
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        type: 'file',
+        size: 10,
+        encoding: 'base64',
+        content: Buffer.from('refetched-0').toString('base64'),
+      }),
+    } as unknown as Response);
+    global.fetch = fetchMock;
+
+    await getFileContent('test-owner', 'test-repo', 'file-0.txt');
+    expect(fetchMock).toHaveBeenCalled();
   });
 });
