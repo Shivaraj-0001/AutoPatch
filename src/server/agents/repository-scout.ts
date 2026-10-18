@@ -78,14 +78,36 @@ Do not include any text before or after the JSON.`;
     }
     prompt += '\n';
 
+    if (input.issueSpecification.constraints && input.issueSpecification.constraints.length > 0) {
+      prompt += `**Constraints:**\n`;
+      for (const c of input.issueSpecification.constraints) {
+        prompt += `- ${c}\n`;
+      }
+      prompt += '\n';
+    }
+
+    if (
+      input.issueSpecification.verificationRequirements &&
+      input.issueSpecification.verificationRequirements.length > 0
+    ) {
+      prompt += `**Verification Requirements:**\n`;
+      for (const vr of input.issueSpecification.verificationRequirements) {
+        prompt += `- ${vr}\n`;
+      }
+      prompt += '\n';
+    }
+
     const fileTree = input.fileTree ? input.fileTree.trim() : '(No file tree available)';
     prompt += `**Repository File Tree:**\n\`\`\`\n${fileTree}\n\`\`\`\n\n`;
 
     const inspected = input.inspectedFiles ? Object.entries(input.inspectedFiles) : [];
     if (inspected.length > 0) {
       prompt += `**Inspected Files:**\n`;
-      for (const [path, content] of inspected) {
-        prompt += `\n--- ${path} ---\n\`\`\`\n${(content || '').slice(0, 5000)}\n\`\`\`\n`;
+      for (const [path, content] of inspected.slice(0, 30)) {
+        const fileContent = (content || '').trim();
+        if (fileContent.length > 0) {
+          prompt += `\n--- ${path} ---\n\`\`\`\n${fileContent.slice(0, 5000)}\n\`\`\`\n`;
+        }
       }
     }
 

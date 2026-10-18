@@ -55,9 +55,26 @@ describe('RepositoryScoutAgent', () => {
     expect(prompt).toContain('**Issue Summary:** Fix rate limiter sliding window bug');
     expect(prompt).toContain('- [AC-1] Prune timestamps before checking limit');
     expect(prompt).toContain('- [AC-2] Concurrent calls respect capacity (inferred)');
+    expect(prompt).toContain('**Constraints:**\n- No external Redis dependency');
+    expect(prompt).toContain('**Verification Requirements:**\n- Unit test with mock timers');
     expect(prompt).toContain('src/\n  index.ts\n  limiter.ts');
     expect(prompt).toContain('--- src/limiter.ts ---');
     expect(prompt).toContain('export class RateLimiter');
+  });
+
+  it('filters out empty inspected file contents', () => {
+    const agent = new RepositoryScoutAgent();
+    const input: RepositoryScoutInput = {
+      ...sampleInput,
+      inspectedFiles: {
+        'src/empty.ts': '   ',
+        'src/valid.ts': 'export const a = 1;',
+      },
+    };
+
+    const prompt = (agent as any).getUserPrompt(input);
+    expect(prompt).toContain('--- src/valid.ts ---');
+    expect(prompt).not.toContain('--- src/empty.ts ---');
   });
 
   it('handles empty inspected files and empty file tree safely', () => {
