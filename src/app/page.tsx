@@ -25,6 +25,7 @@ const AutoPatchApp = dynamic(
         <div style={{ textAlign: 'center' }}>
           <div
             aria-hidden="true"
+            className="animate-spin"
             style={{
               width: '40px',
               height: '40px',
