@@ -15,6 +15,12 @@ export interface IssueSummaryCardProps {
   id?: string;
 }
 
+function normalizeLabelColor(color?: string): string {
+  if (!color) return '6b7280';
+  const cleaned = color.replace(/^#/, '').trim();
+  return /^[0-9a-fA-F]{3,6}$/.test(cleaned) ? cleaned : '6b7280';
+}
+
 export const IssueSummaryCard: React.FC<IssueSummaryCardProps> = ({
   issue,
   repoFullName,
@@ -149,26 +155,29 @@ export const IssueSummaryCard: React.FC<IssueSummaryCardProps> = ({
       {/* Labels */}
       {(issue.labels?.length ?? 0) > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '14px' }}>
-          {issue.labels!.map((label) => (
-            <span
-              key={label.name}
-              style={{
-                fontSize: '0.75rem',
-                padding: '2px 8px',
-                borderRadius: 'var(--radius-full)',
-                backgroundColor: `#${label.color}22`,
-                color: `#${label.color}`,
-                border: `1px solid #${label.color}44`,
-                fontWeight: 500,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-            >
-              <Tag size={10} />
-              {label.name}
-            </span>
-          ))}
+          {issue.labels!.map((label) => {
+            const safeColor = normalizeLabelColor(label.color);
+            return (
+              <span
+                key={label.name}
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '2px 8px',
+                  borderRadius: 'var(--radius-full)',
+                  backgroundColor: `#${safeColor}22`,
+                  color: `#${safeColor}`,
+                  border: `1px solid #${safeColor}44`,
+                  fontWeight: 500,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <Tag size={10} />
+                {label.name}
+              </span>
+            );
+          })}
         </div>
       )}
 

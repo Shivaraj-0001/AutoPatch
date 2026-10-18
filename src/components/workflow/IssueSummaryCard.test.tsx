@@ -66,6 +66,25 @@ describe('IssueSummaryCard Component', () => {
     expect(html).toContain('color:#d73a4a');
   });
 
+  it('safely normalizes malformed label colors to a fallback hex color', () => {
+    const issueWithMalformedLabels: GitHubIssue = {
+      ...mockIssue,
+      labels: [
+        { name: 'malformed-1', color: 'invalid; background: red' },
+        { name: 'malformed-2', color: '' },
+      ],
+    };
+
+    const html = renderToString(
+      <IssueSummaryCard issue={issueWithMalformedLabels} repoFullName="expressjs/express" />
+    );
+
+    expect(html).toContain('malformed-1');
+    expect(html).toContain('color:#6b7280');
+    expect(html).toContain('malformed-2');
+    expect(html).not.toContain('invalid');
+  });
+
   it('renders issue body and falls back when empty', () => {
     const htmlWithBody = renderToString(
       <IssueSummaryCard issue={mockIssue} repoFullName="expressjs/express" />
