@@ -198,6 +198,17 @@ describe('GitHub API Routes', () => {
       expect(data.fullName).toBe('vercel/next.js');
     });
 
+    it('returns 400 when owner or repo query parameters contain invalid or malicious characters', async () => {
+      const maliciousReq = new NextRequest(
+        'http://localhost:3000/api/github/repository?owner=..%2F..%2Fetc&repo=passwd',
+      );
+      const res = await repoGet(maliciousReq);
+      const data = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(data.error).toBe('Invalid GitHub repository or owner name');
+    });
+
     it('handles GitHubApiError properly for repository endpoint', async () => {
       vi.spyOn(githubService, 'getRepository').mockRejectedValue(
         new githubService.GitHubApiError('Repository not found', 404),

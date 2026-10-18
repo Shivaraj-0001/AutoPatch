@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseGitHubUrl } from '@/server/utils/url-parser';
+import { parseGitHubUrl, isValidGitHubName } from '@/server/utils/url-parser';
 import * as githubService from '@/server/services/github';
 
 export const dynamic = 'force-dynamic';
@@ -15,8 +15,16 @@ export async function GET(request: NextRequest) {
     let repo: string;
 
     if (ownerParam && repoParam) {
-      owner = ownerParam.trim();
-      repo = repoParam.trim();
+      const trimmedOwner = ownerParam.trim();
+      const trimmedRepo = repoParam.trim().replace(/\.git$/, '');
+      if (!isValidGitHubName(trimmedOwner) || !isValidGitHubName(trimmedRepo)) {
+        return NextResponse.json(
+          { error: 'Invalid GitHub repository or owner name' },
+          { status: 400 },
+        );
+      }
+      owner = trimmedOwner;
+      repo = trimmedRepo;
     } else if (repoUrl) {
       const urlParsed = parseGitHubUrl(repoUrl);
       if (!urlParsed) {
