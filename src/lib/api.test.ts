@@ -62,6 +62,20 @@ describe('Client API utilities (src/lib/api.ts)', () => {
       });
       expect(result).toEqual(mockConfig);
     });
+
+    it('passes optional AbortSignal to fetch options', async () => {
+      const controller = new AbortController();
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({}),
+      } as unknown as Response);
+
+      await fetchPublicConfig(controller.signal);
+      expect(global.fetch).toHaveBeenCalledWith('/api/config', {
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+      });
+    });
   });
 
   describe('fetchIssueDetails', () => {
@@ -96,11 +110,27 @@ describe('Client API utilities (src/lib/api.ts)', () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => mockRepo,
-      } as Response);
+      } as unknown as Response);
 
       const result = await fetchRepoMetadata('https://github.com/owner/repo?ref=main');
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/github/repository?url=' + encodeURIComponent('https://github.com/owner/repo?ref=main'),
+        { headers: { 'Content-Type': 'application/json' } },
+      );
+      expect(result).toEqual(mockRepo);
+    });
+
+    it('queries by owner and repo parameters when object is provided', async () => {
+      const mockRepo = { repository: { fullName: 'facebook/react' } };
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockRepo,
+      } as unknown as Response);
+
+      const result = await fetchRepoMetadata({ owner: 'facebook', repo: 'react' });
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/github/repository?owner=facebook&repo=react',
         { headers: { 'Content-Type': 'application/json' } },
       );
       expect(result).toEqual(mockRepo);

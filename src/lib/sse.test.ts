@@ -101,4 +101,12 @@ describe('Server-Sent Events client utility (src/lib/sse.ts)', () => {
     disconnect();
     expect(instance.closed).toBe(true);
   });
+
+  it('returns a no-op cleanup function safely when EventSource is not supported (SSR)', () => {
+    (global as any).EventSource = undefined;
+    const onEvent = vi.fn();
+    const disconnect = connectRunEvents('run-ssr', onEvent);
+    expect(typeof disconnect).toBe('function');
+    expect(() => disconnect()).not.toThrow();
+  });
 });

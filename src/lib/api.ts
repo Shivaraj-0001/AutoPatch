@@ -45,8 +45,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   return response.json();
 }
 
-export async function fetchPublicConfig(): Promise<PublicConfig> {
-  return request<PublicConfig>('/config');
+export async function fetchPublicConfig(signal?: AbortSignal): Promise<PublicConfig> {
+  return request<PublicConfig>('/config', { signal });
 }
 
 export async function fetchIssueDetails(
@@ -62,8 +62,15 @@ export async function fetchIssueDetails(
   );
 }
 
-export async function fetchRepoMetadata(repoUrl: string): Promise<any> {
-  return request(`/github/repository?url=${encodeURIComponent(repoUrl)}`);
+export async function fetchRepoMetadata(
+  target: string | { owner: string; repo: string },
+): Promise<any> {
+  if (typeof target === 'string') {
+    return request(`/github/repository?url=${encodeURIComponent(target)}`);
+  }
+  return request(
+    `/github/repository?owner=${encodeURIComponent(target.owner)}&repo=${encodeURIComponent(target.repo)}`,
+  );
 }
 
 export async function startWorkflowRun(params: {
@@ -81,11 +88,11 @@ export async function startWorkflowRun(params: {
   );
 }
 
-export async function getWorkflowRun(id: string): Promise<WorkflowRun> {
-  return request<WorkflowRun>(`/runs/${id}`);
+export async function getWorkflowRun(id: string, signal?: AbortSignal): Promise<WorkflowRun> {
+  return request<WorkflowRun>(`/runs/${id}`, { signal });
 }
 
-export async function listWorkflowRuns(): Promise<
+export async function listWorkflowRuns(signal?: AbortSignal): Promise<
   Array<{
     id: string;
     repository: string;
@@ -97,7 +104,7 @@ export async function listWorkflowRuns(): Promise<
     updatedAt: string;
   }>
 > {
-  return request('/runs');
+  return request('/runs', { signal });
 }
 
 export async function cancelWorkflowRun(id: string): Promise<{ status: string }> {

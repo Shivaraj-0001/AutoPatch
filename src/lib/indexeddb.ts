@@ -389,6 +389,9 @@ export function downloadPatchBlob(
   issueNumber: number,
   revisionNumber?: number,
 ): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
   const content = formatPatchContent(patch, repoName, issueNumber, revisionNumber);
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);

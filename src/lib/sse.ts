@@ -7,10 +7,18 @@ export function connectRunEvents(
   onEvent: SSECallback,
   onError?: (err: Event) => void,
 ): () => void {
-  const url = `/api/runs/${runId}/events`;
-  const eventSource = new EventSource(url);
+  const EventSourceConstructor =
+    (typeof window !== 'undefined' ? (window as any).EventSource : undefined) ||
+    (typeof EventSource !== 'undefined' ? EventSource : undefined);
 
-  eventSource.onmessage = (e) => {
+  if (!EventSourceConstructor) {
+    return () => {};
+  }
+
+  const url = `/api/runs/${runId}/events`;
+  const eventSource = new EventSourceConstructor(url);
+
+  eventSource.onmessage = (e: MessageEvent) => {
     try {
       const data = JSON.parse(e.data);
       onEvent(data);
@@ -20,7 +28,7 @@ export function connectRunEvents(
   };
 
   if (onError) {
-    eventSource.onerror = (e) => {
+    eventSource.onerror = (e: Event) => {
       onError(e);
     };
   }

@@ -159,6 +159,13 @@ describe('IndexedDB Client Storage & Utilities (src/lib/indexeddb.ts)', () => {
       expect(mockRemove).toHaveBeenCalledWith(mockAnchor);
       expect(downloadFilename).toBe('react-issue-101-rev2.patch');
     });
+
+    it('downloadPatchBlob handles non-DOM / SSR environments gracefully', () => {
+      (global as any).document = undefined;
+      expect(() => {
+        downloadPatchBlob('diff', 'facebook/react', 101);
+      }).not.toThrow();
+    });
   });
 
   describe('SSR / Non-Browser Fallbacks', () => {
