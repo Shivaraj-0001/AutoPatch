@@ -9,6 +9,7 @@ export interface AgentResult<T> {
   output: T;
   model: string;
   provider: string;
+  durationMs?: number;
   usage: {
     promptTokens: number;
     completionTokens: number;
@@ -25,6 +26,27 @@ export abstract class BaseAgent<TInput extends object, TOutput> {
   protected abstract getSystemPrompt(): string;
   protected abstract getUserPrompt(input: TInput): string;
 
+  /**
+   * Hook called before prompt execution. Can be overridden for custom logging or metrics.
+   */
+  protected onBeforeExecute?(input: TInput): void;
+
+  /**
+   * Hook called after successful execution.
+   */
+  protected onAfterExecute?(result: AgentResult<TOutput>): void;
+
+  /**
+   * Build the chat messages array for completion.
+   * Can be overridden by subclasses requiring multi-turn or dynamic message history.
+   */
+  protected buildMessages(input: TInput): ChatMessage[] {
+    return [
+      { role: 'system', content: this.getSystemPrompt() },
+      { role: 'user', content: this.getUserPrompt(input) },
+    ];
+  }
+
   protected getCompletionOptions(): CompletionOptions {
     return {
       temperature: 0.2,
@@ -34,10 +56,10 @@ export abstract class BaseAgent<TInput extends object, TOutput> {
   }
 
   async execute(input: TInput, options?: { signal?: AbortSignal }): Promise<AgentResult<TOutput>> {
-    const messages: ChatMessage[] = [
-      { role: 'system', content: this.getSystemPrompt() },
-      { role: 'user', content: this.getUserPrompt(input) },
-    ];
+    this.onBeforeExecute?.(input);
+    const startTime = Date.now();
+
+    const messages = this.buildMessages(input);
 
     const completionOptions: CompletionOptions = {
       ...this.getCompletionOptions(),
@@ -50,11 +72,16 @@ export abstract class BaseAgent<TInput extends object, TOutput> {
       completionOptions,
     );
 
-    return {
+    const result: AgentResult<TOutput> = {
       output: response.result,
       model: response.model,
       provider: response.provider,
       usage: response.usage,
+      durationMs: Date.now() - startTime,
     };
+
+    this.onAfterExecute?.(result);
+
+    return result;
   }
 }

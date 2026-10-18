@@ -74,12 +74,14 @@ describe('BaseAgent', () => {
       output: { greeting: 'Hello, World!' },
       model: 'qwen-2.5-coder',
       provider: 'groq',
+      durationMs: expect.any(Number),
       usage: {
         promptTokens: 15,
         completionTokens: 8,
         totalTokens: 23,
       },
     });
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('passes cancellation signal when provided in options', async () => {
@@ -104,6 +106,42 @@ describe('BaseAgent', () => {
         signal: controller.signal,
       }),
     );
+  });
+
+  it('invokes lifecycle hooks and respects custom buildMessages override', async () => {
+    const beforeHook = vi.fn();
+    const afterHook = vi.fn();
+
+    class CustomAgent extends ConcreteTestAgent {
+      protected onBeforeExecute(input: TestInput): void {
+        beforeHook(input);
+      }
+
+      protected onAfterExecute(result: any): void {
+        afterHook(result);
+      }
+
+      protected buildMessages(input: TestInput) {
+        return [
+          { role: 'system' as const, content: 'Custom system prompt' },
+          { role: 'user' as const, content: `Custom user: ${input.name}` },
+        ];
+      }
+    }
+
+    vi.spyOn(aiProvider, 'chatCompletionWithSchema').mockResolvedValue({
+      result: { greeting: 'Custom greeting' },
+      model: 'custom-model',
+      provider: 'custom-provider',
+      usage: null,
+    });
+
+    const agent = new CustomAgent();
+    const res = await agent.execute({ name: 'AgentHook' });
+
+    expect(beforeHook).toHaveBeenCalledWith({ name: 'AgentHook' });
+    expect(afterHook).toHaveBeenCalledWith(res);
+    expect(res.output.greeting).toBe('Custom greeting');
   });
 
   it('propagates errors thrown during completion or schema parsing', async () => {
