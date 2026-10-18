@@ -36,17 +36,17 @@ export const AcceptanceCriteriaChecklist: React.FC<AcceptanceCriteriaChecklistPr
 
   const getStatusBadge = (res?: AcceptanceCriterionResult) => {
     if (!res) {
-      return <Badge variant="neutral">Not yet evaluated</Badge>;
+      return <Badge variant="neutral" title="Criterion has not been evaluated yet">Not yet evaluated</Badge>;
     }
     switch (res.status) {
       case 'satisfied':
-        return <Badge variant="green" icon={<CheckCircle2 size={12} />}>Satisfied</Badge>;
+        return <Badge variant="green" icon={<CheckCircle2 size={12} />} title="Criterion verified and satisfied">Satisfied</Badge>;
       case 'partially-satisfied':
-        return <Badge variant="amber" icon={<AlertCircle size={12} />}>Partially Satisfied</Badge>;
+        return <Badge variant="amber" icon={<AlertCircle size={12} />} title="Criterion partially satisfied">Partially Satisfied</Badge>;
       case 'not-satisfied':
-        return <Badge variant="rose" icon={<XCircle size={12} />}>Not Satisfied</Badge>;
+        return <Badge variant="rose" icon={<XCircle size={12} />} title="Criterion not satisfied">Not Satisfied</Badge>;
       case 'unable-to-verify':
-        return <Badge variant="neutral" icon={<HelpCircle size={12} />}>Unverified (No Test Runner)</Badge>;
+        return <Badge variant="neutral" icon={<HelpCircle size={12} />} title="Unable to verify automatically without test runner">Unverified (No Test Runner)</Badge>;
       default:
         return <Badge variant="neutral">{res.status}</Badge>;
     }
@@ -62,6 +62,7 @@ export const AcceptanceCriteriaChecklist: React.FC<AcceptanceCriteriaChecklistPr
         role={collapsible ? 'button' : undefined}
         tabIndex={collapsible ? 0 : undefined}
         aria-expanded={collapsible ? isOpen : undefined}
+        title={collapsible ? (isOpen ? 'Collapse criteria list' : 'Expand criteria list') : undefined}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -100,7 +101,10 @@ export const AcceptanceCriteriaChecklist: React.FC<AcceptanceCriteriaChecklistPr
                 Acceptance Criteria Verification
               </h3>
               {results && results.length > 0 && (
-                <Badge variant={satisfiedCount === criteria.length ? 'green' : 'cyan'}>
+                <Badge
+                  variant={satisfiedCount === criteria.length ? 'green' : 'cyan'}
+                  title={`${satisfiedCount} of ${criteria.length} criteria satisfied`}
+                >
                   {`${satisfiedCount}/${criteria.length} Satisfied`}
                 </Badge>
               )}

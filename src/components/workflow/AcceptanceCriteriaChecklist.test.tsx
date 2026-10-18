@@ -51,6 +51,7 @@ describe('AcceptanceCriteriaChecklist Component', () => {
     );
 
     expect(html).toContain('2/2 Satisfied');
+    expect(html).toContain('title="2 of 2 criteria satisfied"');
     expect(html).toContain('Reviewer note:');
     expect(html).toContain('Path normalization correctly strips dot-dot segments.');
   });
