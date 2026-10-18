@@ -108,7 +108,7 @@ export class ApiKeyPool {
   constructor(
     private getKeys: () => string[] = () => config.ai.apiKeys,
     private getBaseUrl: () => string = () => config.ai.baseUrl,
-    tpmLimit: number = 8000,
+    tpmLimit: number = config.ai.tpmLimit,
   ) {
     this.tpmLimit = tpmLimit;
   }
@@ -282,6 +282,18 @@ export class ApiKeyPool {
       activeKeys: slots.length - inCooldown,
       inCooldown,
     };
+  }
+
+  public getSlotHeadroom(slot: KeySlot, now: number = Date.now()): number {
+    const used = this.pruneSlot(slot, now);
+    if (slot.cooldownUntil > now) return 0;
+    return Math.max(0, this.tpmLimit - used);
+  }
+
+  public getKeyHeadroom(key: string, now: number = Date.now()): number {
+    const slot = this.getSlots().find((s) => s.key === key);
+    if (!slot) return 0;
+    return this.getSlotHeadroom(slot, now);
   }
 
   public resetCooldowns(): void {

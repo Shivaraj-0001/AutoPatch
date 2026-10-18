@@ -242,6 +242,25 @@ describe('ApiKeyPool & Multi-Key Rate Limiting', () => {
     };
     expect(parseCooldownMs(errorWithHeader)).toBe(13500);
   });
+
+  it('calculates remaining slot and key headroom correctly', () => {
+    const pool = new ApiKeyPool(() => [keys[0]], () => 'https://api.groq.com/openai/v1', 8000);
+    const slot = pool.getSlots()[0];
+
+    expect(pool.getKeyHeadroom(keys[0])).toBe(8000);
+    expect(pool.getSlotHeadroom(slot)).toBe(8000);
+
+    pool.recordUsage(keys[0], 3500);
+    expect(pool.getKeyHeadroom(keys[0])).toBe(4500);
+    expect(pool.getSlotHeadroom(slot)).toBe(4500);
+
+    // Returns 0 headroom when in cooldown
+    pool.markCooldown(keys[0], 10_000);
+    expect(pool.getKeyHeadroom(keys[0])).toBe(0);
+
+    // Returns 0 for unknown key
+    expect(pool.getKeyHeadroom('non-existent-key')).toBe(0);
+  });
 });
 
 
