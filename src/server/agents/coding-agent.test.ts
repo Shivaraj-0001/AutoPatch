@@ -129,6 +129,39 @@ describe('CodingAgentImpl', () => {
     expect(prompt).toContain('--- a/src/paginate.ts');
   });
 
+  it('includes refinement prompt when isRefinement and userInstructions are provided without reviewFindings or previousPatch', () => {
+    const agent = new CodingAgentImpl();
+    const refinementInput: CodingAgentInput = {
+      ...sampleInput,
+      isRefinement: true,
+      userInstructions: 'Refactor helper function to use arrow syntax and add error boundaries.',
+    };
+
+    const prompt = (agent as any).getUserPrompt(refinementInput);
+
+    expect(prompt).toContain('**FEEDBACK & REVISION REQUEST**');
+    expect(prompt).toContain('**User Refinement Instructions:**\nRefactor helper function to use arrow syntax and add error boundaries.');
+    expect(prompt).not.toContain('**Previous Patch:**');
+    expect(prompt).not.toContain('**Critical & Major Issues');
+    expect(prompt).toContain('**Revision Directives:**');
+  });
+
+  it('includes refinement prompt with previousPatch and userInstructions when reviewFindings is omitted', () => {
+    const agent = new CodingAgentImpl();
+    const refinementInput: CodingAgentInput = {
+      ...sampleInput,
+      previousPatch: '--- a/src/paginate.ts\n+++ b/src/paginate.ts\n@@ -1 +1 @@\n-old\n+new',
+      userInstructions: 'Add JSDoc comments to paginate function.',
+    };
+
+    const prompt = (agent as any).getUserPrompt(refinementInput);
+
+    expect(prompt).toContain('**FEEDBACK & REVISION REQUEST**');
+    expect(prompt).toContain('**User Refinement Instructions:**\nAdd JSDoc comments to paginate function.');
+    expect(prompt).toContain('**Previous Patch:**\n```diff\n--- a/src/paginate.ts');
+    expect(prompt).not.toContain('**Critical & Major Issues');
+  });
+
   it('executes coding proposal generation and returns validated CodingProposal', async () => {
     const agent = new CodingAgentImpl();
 

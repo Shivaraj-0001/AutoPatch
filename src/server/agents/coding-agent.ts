@@ -75,57 +75,66 @@ Do not include any text before or after the JSON.`;
   protected getUserPrompt(input: CodingAgentInput): string {
     let prompt = '';
 
-    // If this is a revision / refinement, include the review feedback
-    if (input.previousPatch && input.reviewFindings) {
+    // If this is a revision / refinement, include the review feedback and instructions
+    const isRevisionOrRefinement = Boolean(
+      input.isRefinement ||
+      input.previousPatch ||
+      input.reviewFindings ||
+      input.userInstructions
+    );
+
+    if (isRevisionOrRefinement) {
       prompt += `**FEEDBACK & REVISION REQUEST**\n`;
-      prompt += `Your previous patch was reviewed by the Review Agent. Address the findings and recommendations below to refine the implementation:\n\n`;
-
-      const criticalMajor = input.reviewFindings.findings.filter(
-        (f) => f.severity === 'critical' || f.severity === 'major',
-      );
-      if (criticalMajor.length > 0) {
-        prompt += `**Critical & Major Issues (Must Fix):**\n`;
-        for (const finding of criticalMajor) {
-          prompt += `- [${finding.severity.toUpperCase()}] ${finding.description}`;
-          if (finding.suggestedFix) prompt += ` → Suggested Fix: ${finding.suggestedFix}`;
-          if (finding.filePath) prompt += ` (in ${finding.filePath})`;
-          prompt += '\n';
-        }
-        prompt += '\n';
-      }
-
-      if (input.reviewFindings.requiredChanges && input.reviewFindings.requiredChanges.length > 0) {
-        prompt += `**Required Changes:**\n`;
-        for (const change of input.reviewFindings.requiredChanges) {
-          prompt += `- ${change}\n`;
-        }
-        prompt += '\n';
-      }
-
-      const minorSuggestions = input.reviewFindings.findings.filter(
-        (f) => f.severity === 'minor' || f.severity === 'suggestion',
-      );
-      if (minorSuggestions.length > 0) {
-        prompt += `**Code Quality, Convention & Minor Findings:**\n`;
-        for (const finding of minorSuggestions) {
-          prompt += `- [${finding.severity.toUpperCase()}] ${finding.description}`;
-          if (finding.suggestedFix) prompt += ` → Suggested Fix: ${finding.suggestedFix}`;
-          if (finding.filePath) prompt += ` (in ${finding.filePath})`;
-          prompt += '\n';
-        }
-        prompt += '\n';
-      }
-
-      if (input.reviewFindings.optionalSuggestions && input.reviewFindings.optionalSuggestions.length > 0) {
-        prompt += `**Reviewer Recommendations & Suggestions:**\n`;
-        for (const suggestion of input.reviewFindings.optionalSuggestions) {
-          prompt += `- ${suggestion}\n`;
-        }
-        prompt += '\n';
-      }
+      prompt += `This is a revision / refinement request. Address the instructions, findings, and recommendations below to refine the implementation:\n\n`;
 
       if (input.userInstructions) {
         prompt += `**User Refinement Instructions:**\n${input.userInstructions}\n\n`;
+      }
+
+      if (input.reviewFindings) {
+        const criticalMajor = input.reviewFindings.findings.filter(
+          (f) => f.severity === 'critical' || f.severity === 'major',
+        );
+        if (criticalMajor.length > 0) {
+          prompt += `**Critical & Major Issues (Must Fix):**\n`;
+          for (const finding of criticalMajor) {
+            prompt += `- [${finding.severity.toUpperCase()}] ${finding.description}`;
+            if (finding.suggestedFix) prompt += ` → Suggested Fix: ${finding.suggestedFix}`;
+            if (finding.filePath) prompt += ` (in ${finding.filePath})`;
+            prompt += '\n';
+          }
+          prompt += '\n';
+        }
+
+        if (input.reviewFindings.requiredChanges && input.reviewFindings.requiredChanges.length > 0) {
+          prompt += `**Required Changes:**\n`;
+          for (const change of input.reviewFindings.requiredChanges) {
+            prompt += `- ${change}\n`;
+          }
+          prompt += '\n';
+        }
+
+        const minorSuggestions = input.reviewFindings.findings.filter(
+          (f) => f.severity === 'minor' || f.severity === 'suggestion',
+        );
+        if (minorSuggestions.length > 0) {
+          prompt += `**Code Quality, Convention & Minor Findings:**\n`;
+          for (const finding of minorSuggestions) {
+            prompt += `- [${finding.severity.toUpperCase()}] ${finding.description}`;
+            if (finding.suggestedFix) prompt += ` → Suggested Fix: ${finding.suggestedFix}`;
+            if (finding.filePath) prompt += ` (in ${finding.filePath})`;
+            prompt += '\n';
+          }
+          prompt += '\n';
+        }
+
+        if (input.reviewFindings.optionalSuggestions && input.reviewFindings.optionalSuggestions.length > 0) {
+          prompt += `**Reviewer Recommendations & Suggestions:**\n`;
+          for (const suggestion of input.reviewFindings.optionalSuggestions) {
+            prompt += `- ${suggestion}\n`;
+          }
+          prompt += '\n';
+        }
       }
 
       prompt += `**Revision Directives:**\n`;
@@ -133,7 +142,10 @@ Do not include any text before or after the JSON.`;
       prompt += `2. Maintain all previously working logic, bug fixes, and tests that satisfied the issue.\n`;
       prompt += `3. Output a complete, updated unified diff patch replacing the previous patch.\n\n`;
 
-      prompt += `**Previous Patch:**\n\`\`\`diff\n${input.previousPatch}\n\`\`\`\n\n`;
+      if (input.previousPatch) {
+        prompt += `**Previous Patch:**\n\`\`\`diff\n${input.previousPatch}\n\`\`\`\n\n`;
+      }
+
       prompt += `---\n\n`;
     }
 
