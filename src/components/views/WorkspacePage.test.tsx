@@ -100,11 +100,13 @@ describe('WorkspacePage Component', () => {
 
     expect(html).toContain('Target Open-Source Issue');
     expect(html).toContain('Autonomous Contribution Pipeline');
+    expect(html).toContain('title="Issue Analyst Agent: Extracts requirements and acceptance criteria"');
     expect(html).toContain('Analyst');
     expect(html).toContain('Scout');
     expect(html).toContain('Planner');
     expect(html).toContain('Coder');
     expect(html).toContain('Reviewer');
+    expect(html).toContain('title="Review Agent: Conducts adversarial code review and audits"');
   });
 
   it('renders ErrorBanner when an error is passed', () => {
@@ -137,8 +139,10 @@ describe('WorkspacePage Component', () => {
     expect(html).toContain('Autonomous Agents Working');
     expect(html).toContain('facebook/react #101');
     expect(html).toContain('Cancel Run');
+    expect(html).toContain('title="Cancel active autonomous run"');
     expect(html).toContain('aria-label="Cancel active workflow run"');
     expect(html).toContain('New Contribution');
+    expect(html).toContain('title="Start another issue contribution workflow"');
   });
 
   it('renders completed state with result tabs, final report, and diff viewer', () => {
@@ -161,8 +165,11 @@ describe('WorkspacePage Component', () => {
     expect(html).toContain('role="tab"');
     expect(html).toContain('aria-selected="true"');
     expect(html).toContain('Generated Patch');
+    expect(html).toContain('title="View generated unified diff patch and final report"');
     expect(html).toContain('Review &amp; Quality');
+    expect(html).toContain('title="View adversarial review findings and acceptance criteria checklist"');
     expect(html).toContain('Architecture Plan');
+    expect(html).toContain('title="View architectural strategy and planned file modifications"');
 
     // Default active patch panel content
     expect(html).toContain('Open-Source Contribution Package');

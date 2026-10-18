@@ -133,23 +133,38 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
               </p>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <div style={{ padding: '5px 12px', borderRadius: 'var(--radius-full)', background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.25)', fontSize: '0.75rem', color: '#a5b4fc', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div
+                  title="Issue Analyst Agent: Extracts requirements and acceptance criteria"
+                  style={{ padding: '5px 12px', borderRadius: 'var(--radius-full)', background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.25)', fontSize: '0.75rem', color: '#a5b4fc', display: 'flex', alignItems: 'center', gap: '5px' }}
+                >
                   <span style={{ fontWeight: 700 }}>1</span> Analyst
                 </div>
                 <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>→</span>
-                <div style={{ padding: '5px 12px', borderRadius: 'var(--radius-full)', background: 'rgba(6, 182, 212, 0.1)', border: '1px solid rgba(6, 182, 212, 0.25)', fontSize: '0.75rem', color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div
+                  title="Repository Scout Agent: Discovers target files and references"
+                  style={{ padding: '5px 12px', borderRadius: 'var(--radius-full)', background: 'rgba(6, 182, 212, 0.1)', border: '1px solid rgba(6, 182, 212, 0.25)', fontSize: '0.75rem', color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '5px' }}
+                >
                   <span style={{ fontWeight: 700 }}>2</span> Scout
                 </div>
                 <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>→</span>
-                <div style={{ padding: '5px 12px', borderRadius: 'var(--radius-full)', background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.25)', fontSize: '0.75rem', color: '#c084fc', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div
+                  title="Implementation Planner Agent: Designs architectural strategy"
+                  style={{ padding: '5px 12px', borderRadius: 'var(--radius-full)', background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.25)', fontSize: '0.75rem', color: '#c084fc', display: 'flex', alignItems: 'center', gap: '5px' }}
+                >
                   <span style={{ fontWeight: 700 }}>3</span> Planner
                 </div>
                 <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>→</span>
-                <div style={{ padding: '5px 12px', borderRadius: 'var(--radius-full)', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', fontSize: '0.75rem', color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div
+                  title="Coding Agent: Generates minimal, verified patch changes"
+                  style={{ padding: '5px 12px', borderRadius: 'var(--radius-full)', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', fontSize: '0.75rem', color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: '5px' }}
+                >
                   <span style={{ fontWeight: 700 }}>4</span> Coder
                 </div>
                 <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>→</span>
-                <div style={{ padding: '5px 12px', borderRadius: 'var(--radius-full)', background: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.25)', fontSize: '0.75rem', color: '#fb7185', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div
+                  title="Review Agent: Conducts adversarial code review and audits"
+                  style={{ padding: '5px 12px', borderRadius: 'var(--radius-full)', background: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.25)', fontSize: '0.75rem', color: '#fb7185', display: 'flex', alignItems: 'center', gap: '5px' }}
+                >
                   <span style={{ fontWeight: 700 }}>5</span> Reviewer
                 </div>
               </div>
@@ -183,6 +198,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
                   onClick={onCancelRun}
                   className="btn btn-danger"
                   aria-label="Cancel active workflow run"
+                  title="Cancel active autonomous run"
                   style={{ fontSize: '0.8rem', padding: '5px 12px' }}
                 >
                   <StopCircle size={14} />
@@ -195,6 +211,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
                 onClick={onNewRun}
                 className="btn btn-secondary"
                 aria-label="Start a new contribution workflow"
+                title="Start another issue contribution workflow"
                 style={{ fontSize: '0.8rem', padding: '5px 12px' }}
               >
                 <Plus size={14} />
@@ -238,6 +255,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
                   aria-selected={activeResultTab === 'patch'}
                   aria-controls="panel-patch"
                   aria-label="Generated Patch Results"
+                  title="View generated unified diff patch and final report"
                   onClick={() => setActiveResultTab('patch')}
                   className={`btn ${activeResultTab === 'patch' ? 'btn-secondary' : 'btn-ghost'}`}
                   style={{
@@ -263,6 +281,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
                   aria-selected={activeResultTab === 'review'}
                   aria-controls="panel-review"
                   aria-label="Review & Quality Audit"
+                  title="View adversarial review findings and acceptance criteria checklist"
                   onClick={() => setActiveResultTab('review')}
                   className={`btn ${activeResultTab === 'review' ? 'btn-secondary' : 'btn-ghost'}`}
                   style={{
@@ -288,6 +307,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
                   aria-selected={activeResultTab === 'plan'}
                   aria-controls="panel-plan"
                   aria-label="Architecture Plan View"
+                  title="View architectural strategy and planned file modifications"
                   onClick={() => setActiveResultTab('plan')}
                   className={`btn ${activeResultTab === 'plan' ? 'btn-secondary' : 'btn-ghost'}`}
                   style={{
