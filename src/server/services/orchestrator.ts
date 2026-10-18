@@ -87,7 +87,9 @@ export function clearAllRuns(): void {
 
 export function cancelRun(id: string): boolean {
   const run = runs.get(id);
-  if (!run || run.status !== 'running') return false;
+  if (!run || run.status === 'completed' || run.status === 'failed' || run.status === 'cancelled') {
+    return false;
+  }
   cancelledRuns.add(id);
   run.status = 'cancelled';
   run.updatedAt = new Date().toISOString();
