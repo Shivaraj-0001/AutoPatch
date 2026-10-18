@@ -10,6 +10,7 @@ export interface SidebarProps {
   selectedRunId?: string;
   onSelectRun: (id: string) => void;
   onRefresh: () => void;
+  isRefreshing?: boolean;
   onDeleteRun?: (id: string) => Promise<void> | void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -23,6 +24,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   selectedRunId,
   onSelectRun,
   onRefresh,
+  isRefreshing = false,
   onDeleteRun,
   collapsed = false,
   onToggleCollapse,
@@ -104,12 +106,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onRefresh}
+            disabled={isRefreshing}
             className="btn btn-ghost"
             style={{ padding: '4px', height: 'auto', minWidth: 'auto', color: 'var(--text-muted)' }}
             title="Refresh runs"
             aria-label="Refresh runs"
           >
-            <RefreshCw size={13} />
+            <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : undefined} />
           </button>
           {onToggleCollapse && (
             <button

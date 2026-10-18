@@ -117,6 +117,20 @@ describe('Sidebar Component', () => {
     expect(html).toContain('title="Collapse sidebar"');
   });
 
+  it('disables refresh button and applies spinning icon when isRefreshing is true', () => {
+    const html = renderToString(
+      <Sidebar
+        history={mockHistory}
+        onSelectRun={() => {}}
+        onRefresh={() => {}}
+        isRefreshing={true}
+      />
+    );
+
+    expect(html).toContain('disabled=""');
+    expect(html).toContain('animate-spin');
+  });
+
   it('renders delete button when onDeleteRun is supplied', () => {
     const onDeleteRun = vi.fn();
     const html = renderToString(
