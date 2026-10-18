@@ -110,6 +110,8 @@ export const RepositoryIssueForm: React.FC<RepositoryIssueFormProps> = ({
     setRepoUrl('https://github.com/expressjs/express');
     setIssueNumber('5920');
     setAdditionalInstructions('Focus on backward compatibility and edge cases.');
+    setShowAdvanced(true);
+    setError(null);
   };
 
   return (
@@ -131,6 +133,8 @@ export const RepositoryIssueForm: React.FC<RepositoryIssueFormProps> = ({
         <button
           type="button"
           onClick={loadDemoPreset}
+          aria-label="Load sample Express repository and issue"
+          title="Load Express sample issue preset"
           className="btn btn-ghost"
           style={{ fontSize: '0.75rem', padding: '4px 8px' }}
         >
@@ -261,7 +265,11 @@ export const RepositoryIssueForm: React.FC<RepositoryIssueFormProps> = ({
         </div>
 
         {error && (
-          <div style={{ fontSize: '0.8rem', color: 'var(--accent-rose)', backgroundColor: 'rgba(244, 63, 94, 0.1)', padding: '8px 12px', borderRadius: 'var(--radius-sm)' }}>
+          <div
+            role="alert"
+            aria-live="polite"
+            style={{ fontSize: '0.8rem', color: 'var(--accent-rose)', backgroundColor: 'rgba(244, 63, 94, 0.1)', padding: '8px 12px', borderRadius: 'var(--radius-sm)' }}
+          >
             {error}
           </div>
         )}
@@ -270,6 +278,7 @@ export const RepositoryIssueForm: React.FC<RepositoryIssueFormProps> = ({
           <button
             type="button"
             onClick={() => handleFetchPreview()}
+            aria-label="Inspect issue details from GitHub"
             disabled={isLoading || fetchingIssue || !repoUrl || !issueNumber}
             className="btn btn-secondary"
             style={{ fontSize: '0.825rem', padding: '6px 14px' }}
@@ -280,6 +289,7 @@ export const RepositoryIssueForm: React.FC<RepositoryIssueFormProps> = ({
 
           <button
             type="submit"
+            aria-label={isLoading ? 'Generating workflow run...' : 'Start automated workflow run'}
             disabled={isLoading || fetchingIssue || !repoUrl || !issueNumber}
             className="btn btn-primary"
             style={{ minWidth: '150px', fontSize: '0.825rem', padding: '6px 16px' }}

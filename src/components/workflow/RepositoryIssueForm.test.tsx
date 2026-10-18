@@ -73,6 +73,9 @@ describe('RepositoryIssueForm Component', () => {
     expect(html).toContain('id="issue-number-input"');
     expect(html).toContain('aria-label="Issue Number"');
     expect(html).toContain('aria-controls="advanced-form-options"');
+    expect(html).toContain('aria-label="Load sample Express repository and issue"');
+    expect(html).toContain('aria-label="Inspect issue details from GitHub"');
+    expect(html).toContain('aria-label="Start automated workflow run"');
   });
 
   it('applies custom className, id, and style props to outer container', () => {
