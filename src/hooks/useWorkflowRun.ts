@@ -30,6 +30,11 @@ export function useWorkflowRun() {
     runRef.current = run;
   }, [run]);
 
+  const eventsRef = useRef<WorkflowEvent[]>([]);
+  useEffect(() => {
+    eventsRef.current = events;
+  }, [events]);
+
   const disconnectRef = useRef<(() => void) | null>(null);
 
   // Clean up SSE connection
@@ -50,21 +55,10 @@ export function useWorkflowRun() {
       return data;
     } catch (err: unknown) {
       console.warn('Failed to refresh run from server:', err);
-      // If server failed (e.g. server restarted), check if we have local cached run
+      // If server failed (e.g. transient network glitch), preserve local cached run without destructively mutating state
       const local = await getRunFromDB(runId);
       if (local) {
-        // If run was in flight but server is unreachable or 404, mark as interrupted
-        if (local.status === 'running' || local.status === 'queued') {
-          const updated: WorkflowRun = {
-            ...local,
-            status: 'failed',
-            error: 'Server connection lost. Preserved in local browser storage.',
-            updatedAt: new Date().toISOString(),
-          };
-          setRun(updated);
-          await saveRunToDB(updated);
-          return updated;
-        }
+        setRun(local);
         return local;
       }
       return null;
@@ -87,11 +81,10 @@ export function useWorkflowRun() {
           }
 
           const event = data as WorkflowEvent;
-          setEvents((prev) => {
-            const next = [...prev, event];
-            saveEventsToDB(runId, next);
-            return next;
-          });
+          const next = [...eventsRef.current, event];
+          eventsRef.current = next;
+          setEvents(next);
+          saveEventsToDB(runId, next);
 
           // When terminal or milestone events occur, refresh run to get latest artifacts & revisions
           if (
@@ -163,17 +156,48 @@ export function useWorkflowRun() {
     }) => {
       setIsLoading(true);
       setError(null);
+      eventsRef.current = [];
       setEvents([]);
 
       try {
-        const { id } = await startWorkflowRun(params);
-        const initialRun = await getWorkflowRun(id);
+        const { id, status, createdAt } = await startWorkflowRun(params);
+        await setAppState('lastSelectedRunId', id);
+        connectToRun(id);
+
+        let initialRun: WorkflowRun;
+        try {
+          initialRun = await getWorkflowRun(id);
+        } catch {
+          // If follow-up fetch has transient network error, construct resilient initial state
+          initialRun = {
+            id,
+            status: (status as WorkflowRun['status']) || 'queued',
+            repository: {
+              owner: '',
+              repo: '',
+              fullName: params.repoUrl.replace(/^https?:\/\/github\.com\//, ''),
+              defaultBranch: params.targetBranch || 'main',
+            },
+            issueNumber: params.issueNumber,
+            issue: null,
+            additionalInstructions: params.additionalInstructions,
+            targetBranch: params.targetBranch,
+            currentAgent: null,
+            agentExecutions: [],
+            issueSpecification: null,
+            repositoryContext: null,
+            implementationPlan: null,
+            codingProposal: null,
+            reviewReport: null,
+            revisionCount: 0,
+            error: null,
+            createdAt: createdAt || new Date().toISOString(),
+            updatedAt: createdAt || new Date().toISOString(),
+          };
+        }
 
         setRun(initialRun);
         await saveRunToDB(initialRun);
-        await setAppState('lastSelectedRunId', id);
-
-        connectToRun(id);
         return initialRun;
       } catch (err: any) {
         setError(err.message || 'Failed to start workflow');
@@ -199,6 +223,7 @@ export function useWorkflowRun() {
         const localEvents = await getEventsFromDB(runId);
         if (localRun) {
           setRun(localRun);
+          eventsRef.current = localEvents;
           setEvents(localEvents);
         }
 
@@ -265,6 +290,7 @@ export function useWorkflowRun() {
   const reset = useCallback(async () => {
     disconnect();
     setRun(null);
+    eventsRef.current = [];
     setEvents([]);
     setError(null);
     await removeAppState('lastSelectedRunId');

@@ -168,6 +168,29 @@ describe('useWorkflowRun hook (src/hooks/useWorkflowRun.ts)', () => {
       expect(updated.error).toBe('Network error starting run');
       expect(updated.isLoading).toBe(false);
     });
+
+    it('creates run and falls back to resilient initial state if follow-up getWorkflowRun fails', async () => {
+      vi.mocked(api.startWorkflowRun).mockResolvedValue({
+        id: 'run-resilient-1',
+        status: 'queued',
+        createdAt: '2026-01-01T00:00:00Z',
+      });
+      vi.mocked(api.getWorkflowRun).mockRejectedValue(new Error('Transient fetch failure'));
+      vi.mocked(sse.connectRunEvents).mockReturnValue(vi.fn());
+
+      const hook = renderHookHarness();
+      const started = await hook.start({
+        repoUrl: 'https://github.com/facebook/react',
+        issueNumber: 99,
+        targetBranch: 'main',
+      });
+
+      expect(started.id).toBe('run-resilient-1');
+      expect(started.status).toBe('queued');
+      expect(started.repository.fullName).toBe('facebook/react');
+      expect(sse.connectRunEvents).toHaveBeenCalledWith('run-resilient-1', expect.any(Function), expect.any(Function));
+      expect(idb.saveRun).toHaveBeenCalledWith(started);
+    });
   });
 
   describe('load existing run', () => {
@@ -366,6 +389,46 @@ describe('useWorkflowRun hook (src/hooks/useWorkflowRun.ts)', () => {
 
       sseCallback(incomingEvent);
       expect(idb.saveRunEvents).toHaveBeenCalledWith('run-sse-test', [incomingEvent]);
+    });
+  });
+
+  describe('refresh run error resilience', () => {
+    it('preserves cached in-flight run without mutating to failed during transient network errors', async () => {
+      const cachedInFlightRun: WorkflowRun = {
+        id: 'run-inflight',
+        status: 'running',
+        repository: { owner: 'test', repo: 'app', fullName: 'test/app', defaultBranch: 'main' },
+        issueNumber: 15,
+        issue: null,
+        currentAgent: 'coding-agent',
+        agentExecutions: [],
+        issueSpecification: null,
+        repositoryContext: null,
+        implementationPlan: null,
+        codingProposal: null,
+        reviewReport: null,
+        revisionCount: 0,
+        error: null,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      };
+
+      vi.mocked(api.startWorkflowRun).mockResolvedValue({ id: 'run-inflight', status: 'running', createdAt: '' });
+      vi.mocked(api.getWorkflowRun).mockResolvedValueOnce(cachedInFlightRun); // for start()
+
+      const hook = renderHookHarness();
+      await hook.start({ repoUrl: 'https://github.com/test/app', issueNumber: 15 });
+      const updatedHook = renderHookHarness();
+
+      // Now server fails transiently on refresh
+      vi.mocked(api.getWorkflowRun).mockRejectedValue(new Error('Transient offline'));
+      vi.mocked(idb.getRun).mockResolvedValue(cachedInFlightRun);
+
+      const result = await updatedHook.refreshRun!();
+      expect(result?.status).toBe('running');
+      expect(result?.error).toBeNull();
+      // Ensure it was NOT overwritten as failed
+      expect(idb.saveRun).not.toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' }));
     });
   });
 
