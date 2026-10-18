@@ -45,6 +45,7 @@ export class RateLimiter {
     const valid = timestamps.filter((t) => now - t < this.windowMs);
 
     if (valid.length >= this.maxRequests) {
+      this.requests.set(key, valid);
       const oldest = valid[0];
       const retryAfterMs = Math.max(0, this.windowMs - (now - oldest));
       return {
@@ -72,6 +73,13 @@ export class RateLimiter {
     const now = Date.now();
     const timestamps = this.requests.get(key) || [];
     const valid = timestamps.filter((t) => now - t < this.windowMs);
+    if (valid.length !== timestamps.length) {
+      if (valid.length === 0) {
+        this.requests.delete(key);
+      } else {
+        this.requests.set(key, valid);
+      }
+    }
     return Math.max(0, this.maxRequests - valid.length);
   }
 

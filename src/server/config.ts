@@ -31,6 +31,9 @@ export const config = {
     get model(): string {
       return process.env.AI_MODEL || '';
     },
+    get tpmLimit(): number {
+      return parsePositiveInt(process.env.AI_TPM_LIMIT, 8000);
+    },
   },
   
   github: {

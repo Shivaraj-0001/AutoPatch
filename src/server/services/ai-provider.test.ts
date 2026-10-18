@@ -195,6 +195,72 @@ describe('ApiKeyPool & Multi-Key Rate Limiting', () => {
       inCooldown: 0,
     });
   });
+
+  it('aligns markCooldown artificial deficit expiration with cooldown duration and caps at tpmLimit', () => {
+    const pool = new ApiKeyPool(() => [keys[0]], () => 'https://api.groq.com/openai/v1', 8000);
+    const slot = pool.getSlots()[0];
+
+    // Simulate 4000 tokens already used
+    pool.recordUsage(keys[0], 4000);
+
+    // Mark cooldown for 15s
+    const before = Date.now();
+    pool.markCooldown(keys[0], 15_000);
+
+    // Saturated tokens should equal 8000 (4000 existing + 4000 deficit), NOT 4000 + 8000
+    const totalUsed = slot.usageHistory.reduce((sum, h) => sum + h.tokens, 0);
+    expect(totalUsed).toBe(8000);
+
+    // Deficit record should expire when the 15s cooldown ends, not 60s
+    const deficitRecord = slot.usageHistory[slot.usageHistory.length - 1];
+    const expiry = deficitRecord.timestamp + pool.windowMs;
+    // Expected expiry should be ~before + 15_000
+    expect(expiry).toBeLessThanOrEqual(before + 16_000);
+  });
+
+  it('handles requests where needed tokens approach or equal tpmLimit without infinite wait', () => {
+    const pool = new ApiKeyPool(() => [keys[0]], () => 'https://api.groq.com/openai/v1', 8000);
+    const slot = pool.getSlots()[0];
+
+    // Empty slot: requesting 8000 tokens (or slightly more) should have waitMs === 0 for empty slot
+    const selEmpty = pool.selectBestKey(8000);
+    expect(selEmpty.waitMs).toBe(0);
+
+    // With usage, waitMs should calculate valid time bounded by windowMs
+    pool.recordUsage(keys[0], 5000);
+    const selUsed = pool.selectBestKey(8000);
+    expect(selUsed.waitMs).toBeGreaterThan(0);
+    expect(selUsed.waitMs).toBeLessThanOrEqual(60_000);
+  });
+
+  it('parses retry-after header from error object when available', () => {
+    const errorWithHeader = {
+      message: 'Rate limit reached',
+      headers: {
+        'retry-after': '12.5',
+      },
+    };
+    expect(parseCooldownMs(errorWithHeader)).toBe(13500);
+  });
+
+  it('calculates remaining slot and key headroom correctly', () => {
+    const pool = new ApiKeyPool(() => [keys[0]], () => 'https://api.groq.com/openai/v1', 8000);
+    const slot = pool.getSlots()[0];
+
+    expect(pool.getKeyHeadroom(keys[0])).toBe(8000);
+    expect(pool.getSlotHeadroom(slot)).toBe(8000);
+
+    pool.recordUsage(keys[0], 3500);
+    expect(pool.getKeyHeadroom(keys[0])).toBe(4500);
+    expect(pool.getSlotHeadroom(slot)).toBe(4500);
+
+    // Returns 0 headroom when in cooldown
+    pool.markCooldown(keys[0], 10_000);
+    expect(pool.getKeyHeadroom(keys[0])).toBe(0);
+
+    // Returns 0 for unknown key
+    expect(pool.getKeyHeadroom('non-existent-key')).toBe(0);
+  });
 });
 
 

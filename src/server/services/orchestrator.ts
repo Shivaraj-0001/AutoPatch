@@ -441,6 +441,7 @@ async function executeWorkflow(run: WorkflowRun): Promise<void> {
     const focusedSourceFiles = selectRelevantSourceFiles(
       run.fetchedFiles,
       scoutResult.output.relevantFiles,
+      12000,
     );
 
     const planner = new ImplementationPlannerAgent();
