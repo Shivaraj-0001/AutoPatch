@@ -1,0 +1,166 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ReviewAgentImpl, type ReviewAgentInput } from './review-agent';
+import * as aiProvider from '../services/ai-provider';
+import type { ReviewReport } from '../schemas/agent-outputs';
+
+describe('ReviewAgentImpl', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const sampleInput: ReviewAgentInput = {
+    issueSpecification: {
+      summary: 'Fix race condition in session revocation',
+      problemStatement: 'Concurrent logout and token refresh causes race condition',
+      expectedBehavior: 'Session revocation must be atomic and invalidate active refresh tokens',
+      acceptanceCriteria: [
+        { id: 'AC-1', description: 'Revoke session atomically in Redis', inferred: false },
+        { id: 'AC-2', description: 'Reject subsequent token refresh calls', inferred: true },
+      ],
+      constraints: ['Redis transactions must be used'],
+      ambiguities: [],
+      verificationRequirements: ['Verify concurrency test with Promise.all'],
+    },
+    implementationPlan: {
+      implementationStrategy: 'Use Redis MULTI/EXEC block to revoke session and blacklist refresh token.',
+      plannedChanges: [
+        {
+          file: 'src/auth/session.ts',
+          action: 'modify',
+          description: 'Wrap session deletion and token blacklisting in redis transaction',
+          relatedCriteria: ['AC-1'],
+        },
+      ],
+      testPlan: [
+        { file: 'tests/session.test.ts', description: 'Concurrent logout test', type: 'integration' },
+      ],
+      risks: [],
+      assumptions: [],
+      acceptanceCriterionMapping: [
+        { criterionId: 'AC-1', plannedChanges: ['Wrap in redis transaction'] },
+      ],
+    },
+    codingProposal: {
+      changeSummary: 'Use redis.multi() for atomic session deletion and token blacklisting',
+      filesChanged: [{ path: 'src/auth/session.ts', action: 'modify' }],
+      patch: `--- a/src/auth/session.ts\n+++ b/src/auth/session.ts\n@@ -10,3 +10,5 @@\n-await redis.del(sessionId);\n+const multi = redis.multi();\n+multi.del(sessionId);\n+multi.sadd('revoked_tokens', tokenId);\n+await multi.exec();`,
+      testsAdded: [
+        {
+          path: 'tests/session.test.ts',
+          description: 'Verifies concurrent revoke and refresh handling',
+          content: 'it("revokes atomically", async () => { ... });',
+        },
+      ],
+      assumptions: ['Redis version supports MULTI/EXEC'],
+      limitations: [],
+    },
+    sourceFiles: {
+      'src/auth/session.ts': 'export async function revokeSession(sessionId: string, tokenId: string) {\n  await redis.del(sessionId);\n}',
+    },
+    revisionAttempt: 0,
+    maxRevisions: 3,
+  };
+
+  it('has correct agent metadata and completion options', () => {
+    const agent = new ReviewAgentImpl();
+    expect(agent.name).toBe('review-agent');
+    expect(agent.displayName).toBe('Review Agent');
+    expect(agent.description).toContain('reviews proposed patches');
+
+    const options = (agent as any).getCompletionOptions();
+    expect(options.temperature).toBe(0.15);
+    expect(options.maxTokens).toBe(4096);
+    expect(options.timeoutMs).toBe(120_000);
+  });
+
+  it('assembles user prompt for initial review without revision notes', () => {
+    const agent = new ReviewAgentImpl();
+    const prompt = (agent as any).getUserPrompt(sampleInput);
+
+    expect(prompt).toContain('Review this proposed patch:');
+    expect(prompt).not.toContain('This is revision attempt');
+    expect(prompt).toContain('**Issue Summary:** Fix race condition in session revocation');
+    expect(prompt).toContain('**Problem:** Concurrent logout and token refresh causes race condition');
+    expect(prompt).toContain('**Expected Behavior:** Session revocation must be atomic');
+    expect(prompt).toContain('- [AC-1] Revoke session atomically in Redis');
+    expect(prompt).toContain('- [AC-2] Reject subsequent token refresh calls (inferred)');
+    expect(prompt).toContain('**Implementation Plan:**\nUse Redis MULTI/EXEC block');
+    expect(prompt).toContain('**Change Summary:** Use redis.multi() for atomic session deletion');
+    expect(prompt).toContain('**Proposed Patch:**\n```diff\n--- a/src/auth/session.ts');
+    expect(prompt).toContain('**Tests Added:**');
+    expect(prompt).toContain('- tests/session.test.ts: Verifies concurrent revoke and refresh handling');
+    expect(prompt).toContain('--- src/auth/session.ts ---');
+    expect(prompt).toContain('export async function revokeSession');
+  });
+
+  it('assembles user prompt for revision attempt including revision progress', () => {
+    const agent = new ReviewAgentImpl();
+    const revisionInput: ReviewAgentInput = {
+      ...sampleInput,
+      revisionAttempt: 1,
+      maxRevisions: 3,
+    };
+
+    const prompt = (agent as any).getUserPrompt(revisionInput);
+
+    expect(prompt).toContain('**Note:** This is revision attempt 2 of 3.');
+    expect(prompt).toContain('The patch has been revised based on previous review findings and suggestions.');
+    expect(prompt).toContain('Verify whether previously noted suggestions or issues have been resolved');
+  });
+
+  it('executes review analysis and returns validated ReviewReport', async () => {
+    const agent = new ReviewAgentImpl();
+
+    const mockReport: ReviewReport = {
+      overallAssessment: 'The patch correctly ensures atomic revocation with Redis MULTI/EXEC block.',
+      findings: [
+        {
+          severity: 'minor',
+          category: 'edge-case',
+          description: 'Consider adding error handling if redis.multi() fails',
+          filePath: 'src/auth/session.ts',
+          suggestedFix: 'Wrap in try/catch block to log execution errors',
+          confidence: 'high',
+        },
+      ],
+      acceptanceCriterionResults: [
+        {
+          criterionId: 'AC-1',
+          status: 'satisfied',
+          explanation: 'Revocation is wrapped in a multi/exec atomic block',
+        },
+        {
+          criterionId: 'AC-2',
+          status: 'satisfied',
+          explanation: 'Token added to revoked_tokens set',
+        },
+      ],
+      testAssessment: 'Integration test added with concurrent verification',
+      requiredChanges: [],
+      optionalSuggestions: ['Add try/catch around multi.exec()'],
+      revisionRequired: false,
+    };
+
+    const completionSpy = vi
+      .spyOn(aiProvider, 'chatCompletionWithSchema')
+      .mockResolvedValue({
+        result: mockReport,
+        model: 'llama-3.3-70b-versatile',
+        provider: 'groq',
+        usage: {
+          promptTokens: 520,
+          completionTokens: 280,
+          totalTokens: 800,
+        },
+      });
+
+    const result = await agent.execute(sampleInput);
+
+    expect(completionSpy).toHaveBeenCalledTimes(1);
+    expect(result.output).toEqual(mockReport);
+    expect(result.output.revisionRequired).toBe(false);
+    expect(result.model).toBe('llama-3.3-70b-versatile');
+    expect(result.provider).toBe('groq');
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
+  });
+});
