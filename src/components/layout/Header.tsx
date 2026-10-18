@@ -11,6 +11,7 @@ export interface HeaderProps {
   activeTab: NavigationTab;
   setActiveTab: (tab: NavigationTab) => void;
   onNewRun: () => void;
+  newRunDisabled?: boolean;
   isSidebarOpen?: boolean;
   onToggleSidebar?: () => void;
   className?: string;
@@ -23,6 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   onNewRun,
+  newRunDisabled = false,
   isSidebarOpen = true,
   onToggleSidebar,
   className = '',
@@ -189,6 +191,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           type="button"
           onClick={onNewRun}
+          disabled={newRunDisabled}
           className="btn btn-primary"
           style={{ padding: '6px 13px', fontSize: '0.825rem' }}
         >

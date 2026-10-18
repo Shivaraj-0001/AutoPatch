@@ -136,6 +136,21 @@ describe('Header Component', () => {
     );
 
     expect(html).toContain('New Contribution');
+    expect(html).not.toContain('disabled=""');
+  });
+
+  it('disables New Contribution button when newRunDisabled is true', () => {
+    const html = renderToString(
+      <Header
+        config={mockConfig}
+        activeTab="workspace"
+        setActiveTab={() => {}}
+        onNewRun={() => {}}
+        newRunDisabled={true}
+      />
+    );
+
+    expect(html).toContain('disabled=""');
   });
 
   it('applies custom className, id, and style props', () => {
