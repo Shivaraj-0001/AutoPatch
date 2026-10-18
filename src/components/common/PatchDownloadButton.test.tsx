@@ -54,4 +54,17 @@ describe('PatchDownloadButton Component', () => {
     expect(html).toContain('patch-download-btn custom-btn-style');
     expect(html).toContain('opacity:0.88');
   });
+
+  it('renders custom label and filename attribute when provided', () => {
+    const html = renderToString(
+      <PatchDownloadButton
+        runId="run-303"
+        hasPatch={true}
+        filename="custom-fix.patch"
+        label="Export Diff File"
+      />
+    );
+    expect(html).toContain('download="custom-fix.patch"');
+    expect(html).toContain('Export Diff File');
+  });
 });

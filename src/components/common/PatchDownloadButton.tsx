@@ -9,6 +9,8 @@ export interface PatchDownloadButtonProps {
   hasPatch: boolean;
   repoName?: string;
   issueNumber?: number;
+  filename?: string;
+  label?: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
   id?: string;
@@ -19,6 +21,8 @@ export const PatchDownloadButton: React.FC<PatchDownloadButtonProps> = ({
   hasPatch,
   repoName,
   issueNumber,
+  filename,
+  label = 'Download Patch (.patch)',
   className = '',
   style,
   id,
@@ -32,13 +36,13 @@ export const PatchDownloadButton: React.FC<PatchDownloadButtonProps> = ({
     <a
       id={id}
       href={url}
-      download
+      download={filename || true}
       className={`btn btn-primary patch-download-btn ${className}`.trim()}
       title={title}
       style={{ display: 'inline-flex', alignItems: 'center', ...style }}
     >
       <Download size={16} />
-      <span>Download Patch (.patch)</span>
+      <span>{label}</span>
     </a>
   );
 };
