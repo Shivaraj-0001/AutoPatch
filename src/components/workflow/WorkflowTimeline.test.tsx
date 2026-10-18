@@ -58,6 +58,8 @@ describe('WorkflowTimeline Component', () => {
     expect(html).toContain('Step 4 of 5');
     expect(html).toContain('Review Agent');
     expect(html).toContain('Step 5 of 5');
+    expect(html).toContain('data-agent="issue-analyst"');
+    expect(html).toContain('aria-label="Step pending"');
   });
 
   it('renders revision cycle badge when revisionCount > 0', () => {

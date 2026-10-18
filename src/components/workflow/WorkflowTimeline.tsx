@@ -75,6 +75,8 @@ export const WorkflowTimeline: React.FC<WorkflowTimelineProps> = ({
     if (status === 'completed') {
       return (
         <div
+          title="Step completed"
+          aria-label="Step completed"
           style={{
             width: '28px',
             height: '28px',
@@ -94,6 +96,8 @@ export const WorkflowTimeline: React.FC<WorkflowTimelineProps> = ({
     if (status === 'running' || isCurrent) {
       return (
         <div
+          title="Step currently running"
+          aria-label="Step currently running"
           style={{
             width: '28px',
             height: '28px',
@@ -115,6 +119,8 @@ export const WorkflowTimeline: React.FC<WorkflowTimelineProps> = ({
     if (status === 'failed') {
       return (
         <div
+          title="Step failed"
+          aria-label="Step failed"
           style={{
             width: '28px',
             height: '28px',
@@ -133,6 +139,8 @@ export const WorkflowTimeline: React.FC<WorkflowTimelineProps> = ({
     }
     return (
       <div
+        title="Step pending"
+        aria-label="Step pending"
         style={{
           width: '28px',
           height: '28px',
@@ -192,6 +200,8 @@ export const WorkflowTimeline: React.FC<WorkflowTimelineProps> = ({
           return (
             <div
               key={step.name}
+              data-agent={step.name}
+              data-status={status}
               style={{
                 display: 'flex',
                 alignItems: 'center',
