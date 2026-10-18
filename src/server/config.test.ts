@@ -48,4 +48,23 @@ describe('server config', () => {
     expect(pub).not.toHaveProperty('token');
     expect(pub).not.toHaveProperty('apiKeys');
   });
+
+  it('safely parses positive integers with fallbacks for numeric env variables', () => {
+    process.env.PORT = '8080';
+    process.env.MAX_REVISION_ATTEMPTS = '5';
+    process.env.SCOUT_MAX_FILES = '100';
+
+    expect(config.port).toBe(8080);
+    expect(config.maxRevisionAttempts).toBe(5);
+    expect(config.scoutMaxFiles).toBe(100);
+
+    // Invalid or non-positive values should fallback gracefully
+    process.env.PORT = 'not-a-number';
+    process.env.MAX_REVISION_ATTEMPTS = '-3';
+    process.env.SCOUT_MAX_FILES = '0';
+
+    expect(config.port).toBe(3001);
+    expect(config.maxRevisionAttempts).toBe(2);
+    expect(config.scoutMaxFiles).toBe(60);
+  });
 });

@@ -1,10 +1,19 @@
 import dotenv from 'dotenv';
+import type { PublicConfig } from '@/lib/types';
+
 dotenv.config();
+
+function parsePositiveInt(val: string | undefined, fallback: number): number {
+  if (!val) return fallback;
+  const parsed = parseInt(val, 10);
+  return !isNaN(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 export const config = {
   get port(): number {
-    return parseInt(process.env.PORT || '3001', 10);
+    return parsePositiveInt(process.env.PORT, 3001);
   },
+
   
   ai: {
     get provider(): string {
@@ -31,10 +40,10 @@ export const config = {
   },
   
   get maxRevisionAttempts(): number {
-    return parseInt(process.env.MAX_REVISION_ATTEMPTS || '2', 10);
+    return parsePositiveInt(process.env.MAX_REVISION_ATTEMPTS, 2);
   },
   get scoutMaxFiles(): number {
-    return parseInt(process.env.SCOUT_MAX_FILES || '60', 10);
+    return parsePositiveInt(process.env.SCOUT_MAX_FILES, 60);
   },
 
   
@@ -50,7 +59,7 @@ export const config = {
 /**
  * Returns a sanitized public configuration object without exposing secrets.
  */
-export function getPublicConfig() {
+export function getPublicConfig(): PublicConfig {
   return {
     aiProvider: config.ai.provider,
     aiModel: config.ai.model || null,
