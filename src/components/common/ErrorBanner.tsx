@@ -6,6 +6,7 @@ import { AlertCircle, X } from 'lucide-react';
 export interface ErrorBannerProps {
   message: string;
   details?: string;
+  action?: React.ReactNode;
   onDismiss?: () => void;
   className?: string;
   style?: React.CSSProperties;
@@ -15,6 +16,7 @@ export interface ErrorBannerProps {
 export const ErrorBanner: React.FC<ErrorBannerProps> = ({
   message,
   details,
+  action,
   onDismiss,
   className = '',
   style,
@@ -47,6 +49,7 @@ export const ErrorBanner: React.FC<ErrorBannerProps> = ({
             {details}
           </div>
         )}
+        {action && <div style={{ marginTop: '8px' }}>{action}</div>}
       </div>
       {onDismiss && (
         <button

@@ -82,4 +82,16 @@ describe('ErrorBanner Component', () => {
     expect(html).toContain('error-banner my-banner-class');
     expect(html).toContain('opacity:0.9');
   });
+
+  it('renders custom action element when action prop is provided', () => {
+    const actionNode = <button type="button">Retry Action</button>;
+    const html = renderToString(
+      <ErrorBanner
+        message="Actionable error"
+        action={actionNode}
+      />
+    );
+    expect(html).toContain('Retry Action');
+    expect(html).toContain('<button type="button">');
+  });
 });
