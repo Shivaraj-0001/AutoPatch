@@ -64,9 +64,9 @@ import { useRunHistory } from './useRunHistory';
 import * as api from '../lib/api';
 import * as idb from '../lib/indexeddb';
 
-function renderHookHarness() {
+function renderHookHarness(options?: any) {
   hookStateIndex = 0;
-  return useRunHistory();
+  return useRunHistory(options);
 }
 
 async function runPendingEffects() {
@@ -100,6 +100,7 @@ describe('useRunHistory hook (src/hooks/useRunHistory.ts)', () => {
 
     expect(hook.history).toEqual([]);
     expect(hook.loading).toBe(false);
+    expect(hook.error).toBeNull();
     expect(typeof hook.refreshHistory).toBe('function');
     expect(typeof hook.deleteHistoryItem).toBe('function');
     expect(typeof hook.clearAllHistory).toBe('function');
@@ -326,6 +327,15 @@ describe('useRunHistory hook (src/hooks/useRunHistory.ts)', () => {
       expect(updated.history).toHaveLength(1);
       expect(updated.history[0].id).toBe('run-del-2');
     });
+
+    it('ignores invalid or empty id gracefully', async () => {
+      const hook = renderHookHarness();
+      await hook.deleteHistoryItem('');
+      await hook.deleteHistoryItem(null as any);
+
+      expect(idb.deleteRun).not.toHaveBeenCalled();
+      expect(api.deleteWorkflowRun).not.toHaveBeenCalled();
+    });
   });
 
   describe('clearAllHistory', () => {
@@ -353,6 +363,14 @@ describe('useRunHistory hook (src/hooks/useRunHistory.ts)', () => {
 
       unmountHarness();
       expect(clearIntervalSpy).toHaveBeenCalled();
+    });
+
+    it('does not start timer when autoRefresh is disabled', async () => {
+      const setIntervalSpy = vi.spyOn(global, 'setInterval');
+      renderHookHarness({ autoRefresh: false });
+      await runPendingEffects();
+
+      expect(setIntervalSpy).not.toHaveBeenCalled();
     });
   });
 });

@@ -13,9 +13,16 @@ import {
 
 export type { RunHistoryItem };
 
-export function useRunHistory() {
+export interface UseRunHistoryOptions {
+  autoRefresh?: boolean;
+  pollIntervalMs?: number;
+}
+
+export function useRunHistory(options: UseRunHistoryOptions = {}) {
+  const { autoRefresh = true, pollIntervalMs = 10_000 } = options;
   const [history, setHistory] = useState<RunHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -113,6 +120,9 @@ export function useRunHistory() {
       }
     } catch (err) {
       console.error('Failed to load run history:', err);
+      if (isMountedRef.current) {
+        setError((err as Error).message || 'Failed to load run history');
+      }
     } finally {
       if (isMountedRef.current) {
         setLoading(false);
@@ -138,19 +148,25 @@ export function useRunHistory() {
 
     initialLoad();
 
-    // Auto-refresh every 10 seconds
-    const interval = setInterval(() => {
-      fetchHistory();
-    }, 10_000);
+    // Auto-refresh interval if enabled
+    let interval: ReturnType<typeof setInterval> | null = null;
+    if (autoRefresh && pollIntervalMs > 0) {
+      interval = setInterval(() => {
+        fetchHistory();
+      }, pollIntervalMs);
+    }
 
     return () => {
       active = false;
-      clearInterval(interval);
+      if (interval) {
+        clearInterval(interval);
+      }
     };
-  }, [fetchHistory]);
+  }, [fetchHistory, autoRefresh, pollIntervalMs]);
 
   // Delete a single run from history
   const deleteHistoryItem = useCallback(async (id: string) => {
+    if (!id || typeof id !== 'string') return;
     // 1. Remove from local IndexedDB
     await deleteRunFromDB(id);
     // 2. Update state immediately
@@ -172,6 +188,7 @@ export function useRunHistory() {
   return {
     history,
     loading,
+    error,
     refreshHistory: fetchHistory,
     deleteHistoryItem,
     clearAllHistory,
