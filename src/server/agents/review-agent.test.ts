@@ -34,7 +34,13 @@ describe('ReviewAgentImpl', () => {
       testPlan: [
         { file: 'tests/session.test.ts', description: 'Concurrent logout test', type: 'integration' },
       ],
-      risks: [],
+      risks: [
+        {
+          description: 'Potential Redis connection timeout under heavy load',
+          severity: 'medium',
+          mitigation: 'Implement retry policy with exponential backoff',
+        },
+      ],
       assumptions: [],
       acceptanceCriterionMapping: [
         { criterionId: 'AC-1', plannedChanges: ['Wrap in redis transaction'] },
@@ -55,6 +61,7 @@ describe('ReviewAgentImpl', () => {
       limitations: [],
     },
     sourceFiles: {
+      'src/other-helper.ts': 'export const helper = () => true;',
       'src/auth/session.ts': 'export async function revokeSession(sessionId: string, tokenId: string) {\n  await redis.del(sessionId);\n}',
     },
     revisionAttempt: 0,
@@ -73,7 +80,7 @@ describe('ReviewAgentImpl', () => {
     expect(options.timeoutMs).toBe(120_000);
   });
 
-  it('assembles user prompt for initial review without revision notes', () => {
+  it('assembles user prompt for initial review without revision notes and prioritizes changed files', () => {
     const agent = new ReviewAgentImpl();
     const prompt = (agent as any).getUserPrompt(sampleInput);
 
@@ -85,12 +92,20 @@ describe('ReviewAgentImpl', () => {
     expect(prompt).toContain('- [AC-1] Revoke session atomically in Redis');
     expect(prompt).toContain('- [AC-2] Reject subsequent token refresh calls (inferred)');
     expect(prompt).toContain('**Implementation Plan:**\nUse Redis MULTI/EXEC block');
+    expect(prompt).toContain('Planned Changes:\n- [modify] src/auth/session.ts: Wrap session deletion');
+    expect(prompt).toContain('Identified Risks:\n- [MEDIUM] Potential Redis connection timeout');
     expect(prompt).toContain('**Change Summary:** Use redis.multi() for atomic session deletion');
+    expect(prompt).toContain('**Files Changed:**\n- [modify] src/auth/session.ts');
     expect(prompt).toContain('**Proposed Patch:**\n```diff\n--- a/src/auth/session.ts');
     expect(prompt).toContain('**Tests Added:**');
     expect(prompt).toContain('- tests/session.test.ts: Verifies concurrent revoke and refresh handling');
-    expect(prompt).toContain('--- src/auth/session.ts ---');
-    expect(prompt).toContain('export async function revokeSession');
+
+    // Prioritization check: changed file 'src/auth/session.ts' must precede 'src/other-helper.ts'
+    const sessionIndex = prompt.indexOf('--- src/auth/session.ts ---');
+    const otherIndex = prompt.indexOf('--- src/other-helper.ts ---');
+    expect(sessionIndex).toBeGreaterThan(-1);
+    expect(otherIndex).toBeGreaterThan(-1);
+    expect(sessionIndex).toBeLessThan(otherIndex);
   });
 
   it('assembles user prompt for revision attempt including revision progress', () => {

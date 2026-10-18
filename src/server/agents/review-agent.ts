@@ -91,7 +91,31 @@ Do not include any text before or after the JSON.`;
 
     prompt += `**Implementation Plan:**\n${input.implementationPlan.implementationStrategy}\n\n`;
 
+    if (input.implementationPlan.plannedChanges && input.implementationPlan.plannedChanges.length > 0) {
+      prompt += `Planned Changes:\n`;
+      for (const change of input.implementationPlan.plannedChanges) {
+        prompt += `- [${change.action}] ${change.file}: ${change.description}\n`;
+      }
+      prompt += '\n';
+    }
+
+    if (input.implementationPlan.risks && input.implementationPlan.risks.length > 0) {
+      prompt += `Identified Risks:\n`;
+      for (const risk of input.implementationPlan.risks) {
+        prompt += `- [${risk.severity.toUpperCase()}] ${risk.description} (Mitigation: ${risk.mitigation})\n`;
+      }
+      prompt += '\n';
+    }
+
     prompt += `**Change Summary:** ${input.codingProposal.changeSummary}\n\n`;
+
+    if (input.codingProposal.filesChanged && input.codingProposal.filesChanged.length > 0) {
+      prompt += `**Files Changed:**\n`;
+      for (const fc of input.codingProposal.filesChanged) {
+        prompt += `- [${fc.action}] ${fc.path}\n`;
+      }
+      prompt += '\n';
+    }
 
     prompt += `**Proposed Patch:**\n\`\`\`diff\n${input.codingProposal.patch}\n\`\`\`\n\n`;
 
@@ -104,8 +128,23 @@ Do not include any text before or after the JSON.`;
     }
 
     prompt += `**Original Source Files:**\n`;
-    for (const [path, content] of Object.entries(input.sourceFiles || {})) {
-      prompt += `\n--- ${path} ---\n\`\`\`\n${(content || '').slice(0, 6000)}\n\`\`\`\n`;
+    const changedFileSet = new Set((input.codingProposal.filesChanged || []).map((f) => f.path));
+    const sourceEntries = Object.entries(input.sourceFiles || {});
+    const sortedEntries = sourceEntries.sort(([pathA], [pathB]) => {
+      const aChanged = changedFileSet.has(pathA) ? 0 : 1;
+      const bChanged = changedFileSet.has(pathB) ? 0 : 1;
+      return aChanged - bChanged;
+    });
+
+    let totalCharsIncluded = 0;
+    const maxChars = 12000;
+    for (const [path, content] of sortedEntries) {
+      if (totalCharsIncluded >= maxChars) break;
+      const budgetRemaining = maxChars - totalCharsIncluded;
+      const sliceLen = Math.min((content || '').length, 6000, budgetRemaining);
+      const fileSnippet = (content || '').slice(0, sliceLen);
+      totalCharsIncluded += fileSnippet.length;
+      prompt += `\n--- ${path} ---\n\`\`\`\n${fileSnippet}\n\`\`\`\n`;
     }
 
     prompt += `\nReview the patch and respond with your findings as a JSON object.`;
