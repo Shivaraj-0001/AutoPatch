@@ -31,8 +31,10 @@ describe('ImplementationPlannerAgent', () => {
           symbols: ['request', 'HttpClient'],
         },
       ],
-      symbolReferences: [],
-      dependencyNotes: [],
+      symbolReferences: [
+        { symbol: 'HttpClient', file: 'src/client.ts', description: 'Base client class' },
+      ],
+      dependencyNotes: ['Requires fetch or Node 18+'],
       existingTests: [{ path: 'tests/client.test.ts', description: 'Tests client requests' }],
       missingContext: [],
       suggestedInspections: [],
@@ -67,8 +69,26 @@ describe('ImplementationPlannerAgent', () => {
     expect(prompt).toContain('**Repository Overview:** HTTP client utility library');
     expect(prompt).toContain('**Language:** TypeScript');
     expect(prompt).toContain('- src/client.ts: Main HTTP client implementation');
+    expect(prompt).toContain('**Existing Tests:**\n- tests/client.test.ts: Tests client requests');
+    expect(prompt).toContain('**Dependency Notes:**\n- Requires fetch or Node 18+');
+    expect(prompt).toContain('**Key Symbol References:**\n- `HttpClient` (src/client.ts): Base client class');
     expect(prompt).toContain('--- src/client.ts ---');
     expect(prompt).toContain('export function request');
+  });
+
+  it('filters out empty or whitespace source files', () => {
+    const agent = new ImplementationPlannerAgent();
+    const input: ImplementationPlannerInput = {
+      ...sampleInput,
+      sourceFiles: {
+        'src/empty.ts': '   ',
+        'src/valid.ts': 'export const valid = true;',
+      },
+    };
+
+    const prompt = (agent as any).getUserPrompt(input);
+    expect(prompt).toContain('--- src/valid.ts ---');
+    expect(prompt).not.toContain('--- src/empty.ts ---');
   });
 
   it('handles empty sourceFiles or empty relevantFiles gracefully', () => {

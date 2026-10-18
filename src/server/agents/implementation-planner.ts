@@ -92,11 +92,41 @@ Do not include any text before or after the JSON.`;
       prompt += '\n';
     }
 
+    const existingTests = input.repositoryContext?.existingTests || [];
+    if (existingTests.length > 0) {
+      prompt += `**Existing Tests:**\n`;
+      for (const test of existingTests) {
+        prompt += `- ${test.path}: ${test.description}\n`;
+      }
+      prompt += '\n';
+    }
+
+    const dependencyNotes = input.repositoryContext?.dependencyNotes || [];
+    if (dependencyNotes.length > 0) {
+      prompt += `**Dependency Notes:**\n`;
+      for (const note of dependencyNotes) {
+        prompt += `- ${note}\n`;
+      }
+      prompt += '\n';
+    }
+
+    const symbolRefs = input.repositoryContext?.symbolReferences || [];
+    if (symbolRefs.length > 0) {
+      prompt += `**Key Symbol References:**\n`;
+      for (const ref of symbolRefs.slice(0, 10)) {
+        prompt += `- \`${ref.symbol}\` (${ref.file}): ${ref.description}\n`;
+      }
+      prompt += '\n';
+    }
+
     const sourceEntries = input.sourceFiles ? Object.entries(input.sourceFiles) : [];
     if (sourceEntries.length > 0) {
       prompt += `**Source Code:**\n`;
       for (const [path, content] of sourceEntries) {
-        prompt += `\n--- ${path} ---\n\`\`\`\n${(content || '').slice(0, 8000)}\n\`\`\`\n`;
+        const fileContent = (content || '').trim();
+        if (fileContent.length > 0) {
+          prompt += `\n--- ${path} ---\n\`\`\`\n${fileContent.slice(0, 8000)}\n\`\`\`\n`;
+        }
       }
     }
 
