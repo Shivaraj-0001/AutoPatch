@@ -13,7 +13,29 @@ export class RateLimiter {
   constructor(
     public readonly maxRequests: number,
     public readonly windowMs: number,
-  ) {}
+  ) {
+    if (maxRequests <= 0 || !Number.isFinite(maxRequests)) {
+      throw new Error('maxRequests must be a positive number');
+    }
+    if (windowMs <= 0 || !Number.isFinite(windowMs)) {
+      throw new Error('windowMs must be a positive number');
+    }
+  }
+
+  /**
+   * Helper factory creating a rate limiter with a 1-minute window.
+   */
+  static perMinute(maxRequests: number): RateLimiter {
+    return new RateLimiter(maxRequests, 60_000);
+  }
+
+  /**
+   * Helper factory creating a rate limiter with a 1-second window.
+   */
+  static perSecond(maxRequests: number): RateLimiter {
+    return new RateLimiter(maxRequests, 1_000);
+  }
+
 
   check(key: string): RateLimitResult {
     const now = Date.now();

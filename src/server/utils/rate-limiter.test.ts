@@ -78,4 +78,21 @@ describe('rate-limiter', () => {
     limiter.prune();
     expect(limiter.getRemaining('old-client')).toBe(2);
   });
+
+  it('validates constructor parameters', () => {
+    expect(() => new RateLimiter(0, 1000)).toThrow('maxRequests must be a positive number');
+    expect(() => new RateLimiter(-5, 1000)).toThrow('maxRequests must be a positive number');
+    expect(() => new RateLimiter(5, 0)).toThrow('windowMs must be a positive number');
+    expect(() => new RateLimiter(5, -100)).toThrow('windowMs must be a positive number');
+  });
+
+  it('creates instances using static factory methods', () => {
+    const minLimiter = RateLimiter.perMinute(10);
+    expect(minLimiter.maxRequests).toBe(10);
+    expect(minLimiter.windowMs).toBe(60_000);
+
+    const secLimiter = RateLimiter.perSecond(2);
+    expect(secLimiter.maxRequests).toBe(2);
+    expect(secLimiter.windowMs).toBe(1_000);
+  });
 });
