@@ -116,4 +116,46 @@ describe('IssueAnalystAgent', () => {
     expect(result.provider).toBe('groq');
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
+
+  it('includes issue number in prompt when provided', () => {
+    const agent = new IssueAnalystAgent();
+    const input: IssueAnalystInput = {
+      issueNumber: 42,
+      title: 'Fix issue',
+      body: 'Description',
+      labels: [],
+      repoLanguage: null,
+      comments: [],
+    };
+
+    const userPrompt = (agent as any).getUserPrompt(input);
+    expect(userPrompt).toContain('**Issue:** #42');
+  });
+
+  it('filters out empty or whitespace comments', () => {
+    const agent = new IssueAnalystAgent();
+    const input: IssueAnalystInput = {
+      title: 'Title',
+      body: 'Body',
+      labels: [],
+      repoLanguage: null,
+      comments: [
+        { author: 'bot', body: '   ' },
+        { author: 'dev', body: 'Actual feedback' },
+      ],
+    };
+
+    const userPrompt = (agent as any).getUserPrompt(input);
+    expect(userPrompt).toContain('- @dev: Actual feedback');
+    expect(userPrompt).not.toContain('@bot');
+  });
+
+  it('configures low temperature completion options for precision', () => {
+    const agent = new IssueAnalystAgent();
+    const options = (agent as any).getCompletionOptions();
+
+    expect(options.temperature).toBe(0.1);
+    expect(options.maxTokens).toBe(3500);
+    expect(options.timeoutMs).toBe(90_000);
+  });
 });

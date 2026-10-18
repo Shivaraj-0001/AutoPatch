@@ -1,8 +1,10 @@
 import { BaseAgent } from './base';
 import { IssueAnalysisSchema, type IssueAnalysis } from '../schemas/agent-outputs';
 import type { AgentName } from '../schemas/workflow';
+import type { CompletionOptions } from '../services/ai-provider';
 
 export interface IssueAnalystInput {
+  issueNumber?: number;
   title: string;
   body: string;
   labels: string[];
@@ -15,6 +17,14 @@ export class IssueAnalystAgent extends BaseAgent<IssueAnalystInput, IssueAnalysi
   readonly displayName = 'Issue Analyst';
   readonly description = 'Analyzes GitHub issues to extract requirements and acceptance criteria';
   protected readonly outputSchema = IssueAnalysisSchema;
+
+  protected override getCompletionOptions(): CompletionOptions {
+    return {
+      temperature: 0.1,
+      maxTokens: 3500,
+      timeoutMs: 90_000,
+    };
+  }
 
   protected getSystemPrompt(): string {
     return `You are an expert software issue analyst. Your job is to analyze GitHub issues and extract structured requirements.
@@ -45,10 +55,13 @@ Do not include any text before or after the JSON.`;
 
   protected getUserPrompt(input: IssueAnalystInput): string {
     let prompt = `Analyze this GitHub issue:\n\n`;
+    if (input.issueNumber) {
+      prompt += `**Issue:** #${input.issueNumber}\n\n`;
+    }
     prompt += `**Title:** ${input.title}\n\n`;
     prompt += `**Description:**\n${input.body || '(No description provided)'}\n\n`;
 
-    if (input.labels.length > 0) {
+    if (input.labels && input.labels.length > 0) {
       prompt += `**Labels:** ${input.labels.join(', ')}\n\n`;
     }
 
@@ -56,10 +69,14 @@ Do not include any text before or after the JSON.`;
       prompt += `**Repository language:** ${input.repoLanguage}\n\n`;
     }
 
-    if (input.comments.length > 0) {
+    const validComments = (input.comments || [])
+      .filter((c) => c && c.body && c.body.trim().length > 0)
+      .slice(-15);
+
+    if (validComments.length > 0) {
       prompt += `**Comments:**\n`;
-      for (const comment of input.comments) {
-        prompt += `- @${comment.author}: ${comment.body.slice(0, 500)}\n`;
+      for (const comment of validComments) {
+        prompt += `- @${comment.author}: ${comment.body.trim().slice(0, 500)}\n`;
       }
       prompt += '\n';
     }
