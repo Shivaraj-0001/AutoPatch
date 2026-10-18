@@ -76,6 +76,48 @@ diff --git a/src/b.ts b/src/b.ts
     expect(files).toEqual(['src/a.ts', 'src/b.ts']);
   });
 
+  it('does not false-positive on traversal sequences or .env inside patch body content', () => {
+    const codeWithDots = `diff --git a/src/utils.ts b/src/utils.ts
+--- a/src/utils.ts
++++ b/src/utils.ts
+@@ -1,2 +1,4 @@
++// references ../components/button
++import { Button } from '../components/button';
++const envName = '.env';
+ export const test = true;`;
+    const result = validatePatch(codeWithDots);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+    expect(result.warnings.some((w) => w.includes('.env'))).toBe(false);
+  });
+
+  it('detects absolute paths in diff --git headers', () => {
+    const diffWithAbs = `diff --git a/C:\\Windows\\system.ini b/C:\\Windows\\system.ini
+--- a/system.ini
++++ b/system.ini
+@@ -1 +1 @@
++bad`;
+    const result = validatePatch(diffWithAbs);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Patch contains absolute paths');
+  });
+
+  it('counts distinct modified files when headers or hunks repeat', () => {
+    const repeated = `diff --git a/src/index.ts b/src/index.ts
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -1 +1 @@
++first hunk
+diff --git a/src/index.ts b/src/index.ts
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -10 +10 @@
++second hunk`;
+    const result = validatePatch(repeated);
+    expect(result.fileCount).toBe(1);
+    expect(result.modifiedFiles).toEqual(['src/index.ts']);
+  });
+
   it('formats patch with header for download', () => {
     const formatted = formatPatchForDownload(validDiff, 'acme/tools', 42);
     expect(formatted).toContain('AutoPatch Generated Patch');
@@ -84,4 +126,5 @@ diff --git a/src/b.ts b/src/b.ts
     expect(formatted).toContain(validDiff);
   });
 });
+
 

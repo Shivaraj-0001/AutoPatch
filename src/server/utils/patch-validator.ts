@@ -39,6 +39,35 @@ export function extractModifiedFiles(patch: string): string[] {
   return Array.from(files);
 }
 
+function isAbsolutePath(filePath: string): boolean {
+  return filePath.startsWith('/') || /^[a-zA-Z]:[/\\]/.test(filePath);
+}
+
+function hasPathTraversal(filePath: string): boolean {
+  return (
+    /(?:^|[/\\])\.\.(?:[/\\]|$)/.test(filePath) ||
+    filePath.includes('/../') ||
+    filePath.includes('\\..\\')
+  );
+}
+
+function isSensitivePath(filePath: string): string | null {
+  const sensitivePatterns = [
+    { pattern: /(?:^|[/\\])\.env(?:\.|$)/, name: '.env' },
+    { pattern: /(?:^|[/\\])\.git(?:[/\\]|$)/, name: '.git/' },
+    { pattern: /(?:^|[/\\])node_modules(?:[/\\]|$)/, name: 'node_modules/' },
+    { pattern: /(?:^|[/\\])\.ssh(?:[/\\]|$)/, name: '.ssh/' },
+    { pattern: /(?:^|[/\\])\.aws(?:[/\\]|$)/, name: '.aws/' },
+  ];
+
+  for (const { pattern, name } of sensitivePatterns) {
+    if (pattern.test(filePath)) {
+      return name;
+    }
+  }
+  return null;
+}
+
 export function validatePatch(patch: string): PatchValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -61,37 +90,50 @@ export function validatePatch(patch: string): PatchValidationResult {
 
   const modifiedFiles = extractModifiedFiles(patch);
 
-  // Parse diff headers for file counts
+  // Distinct file count derived from modified files (with fallback to diff headers)
   const diffHeaders = patch.match(/^diff --git a\/.+ b\/.+$/gm) || [];
-  const fileHeaders = patch.match(/^(\+\+\+|---) [ab]?\/.+$/gm) || [];
-  let fileCount = diffHeaders.length || modifiedFiles.length || Math.ceil(fileHeaders.length / 2);
-
-  if (fileCount === 0) {
-    // Try alternate format
-    const altHeaders = patch.match(/^(---|\+\+\+) .+$/gm) || [];
-    fileCount = Math.ceil(altHeaders.length / 2);
-  }
+  const fileCount = modifiedFiles.length || diffHeaders.length || 0;
 
   if (fileCount > MAX_FILE_COUNT) {
     errors.push(`Patch modifies too many files (${fileCount}, max ${MAX_FILE_COUNT})`);
   }
 
-  // Check for absolute paths (POSIX /path or Windows C:\path)
-  const absolutePathPattern = /^[+-]{3}\s+(?:\/[^\/]|[a-zA-Z]:[/\\])/m;
-  if (absolutePathPattern.test(patch)) {
-    errors.push('Patch contains absolute paths');
+  // Check extracted file paths for traversal, absolute paths, and sensitive files
+  for (const file of modifiedFiles) {
+    if (isAbsolutePath(file)) {
+      if (!errors.includes('Patch contains absolute paths')) {
+        errors.push('Patch contains absolute paths');
+      }
+    }
+    if (hasPathTraversal(file)) {
+      if (!errors.includes('Patch contains path traversal sequences')) {
+        errors.push('Patch contains path traversal sequences');
+      }
+    }
+    const sensitive = isSensitivePath(file);
+    if (sensitive) {
+      const warnMsg = `Patch references potentially sensitive path: ${sensitive}`;
+      if (!warnings.includes(warnMsg)) {
+        warnings.push(warnMsg);
+      }
+    }
   }
 
-  // Check for path traversal sequences
-  if (/(?:^|[/\\])\.\.[/\\]/.test(patch) || patch.includes('/../') || patch.includes('/..\\')) {
-    errors.push('Patch contains path traversal sequences');
-  }
-
-  // Check for suspicious paths
-  const suspiciousPaths = ['.env', '.git/', 'node_modules/', '.ssh/', '.aws/'];
-  for (const sp of suspiciousPaths) {
-    if (patch.includes(sp)) {
-      warnings.push(`Patch references potentially sensitive path: ${sp}`);
+  // Also check raw diff and file header lines for absolute paths and path traversals
+  const headerLines = patch.match(/^(?:diff --git|---|\+\+\+)\s+.+$/gm) || [];
+  for (const line of headerLines) {
+    if (
+      /^[+-]{3}\s+(?:\/[^\/]|[a-zA-Z]:[/\\])/.test(line) ||
+      /^diff --git\s+(?:a\/)?(?:\/[^\/]|[a-zA-Z]:[/\\])/.test(line)
+    ) {
+      if (!errors.includes('Patch contains absolute paths')) {
+        errors.push('Patch contains absolute paths');
+      }
+    }
+    if (/(?:^|\s|[/\\])\.\.(?:[/\\]|\s|$)/.test(line)) {
+      if (!errors.includes('Patch contains path traversal sequences')) {
+        errors.push('Patch contains path traversal sequences');
+      }
     }
   }
 
@@ -104,7 +146,7 @@ export function validatePatch(patch: string): PatchValidationResult {
     valid: errors.length === 0,
     errors,
     warnings,
-    fileCount: fileCount || 0,
+    fileCount,
     totalSize,
     modifiedFiles,
   };
