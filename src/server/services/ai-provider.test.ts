@@ -64,6 +64,15 @@ describe('extractJson', () => {
     expect(parsed.items).toEqual([1, 2]);
     expect(parsed.summary).toBe('done');
   });
+
+  it('strips trailing semicolons after JSON blocks', () => {
+    const withSemicolon = '{\n  "patch": "diff --git a/file.ts\\n",\n  "status": "success"\n};;';
+    const extracted = extractJson(withSemicolon);
+    const parsed = JSON.parse(extracted);
+
+    expect(parsed.status).toBe('success');
+    expect(parsed.patch).toBe('diff --git a/file.ts\n');
+  });
 });
 
 describe('ApiKeyPool & Multi-Key Rate Limiting', () => {
@@ -154,6 +163,7 @@ describe('ApiKeyPool & Multi-Key Rate Limiting', () => {
   it('masks sensitive API keys in logs', () => {
     expect(maskKey('test_secret_api_key_sample_1234567890')).toBe('test...7890');
     expect(maskKey('short')).toBe('***');
+    expect(maskKey('   ')).toBe('***');
   });
 
   it('parses retry durations from rate limit error messages accurately', () => {
@@ -162,5 +172,29 @@ describe('ApiKeyPool & Multi-Key Rate Limiting', () => {
     expect(parseCooldownMs(new Error('Please try again in 2m.'))).toBe(121000);
     expect(parseCooldownMs(new Error('Generic 429'))).toBe(15000);
   });
+
+  it('getPoolStatus accurately tracks active vs cooling-down keys and resets them', () => {
+    const pool = new ApiKeyPool(() => keys, () => 'https://api.groq.com/openai/v1', 8000);
+    expect(pool.getPoolStatus()).toEqual({
+      totalKeys: 3,
+      activeKeys: 3,
+      inCooldown: 0,
+    });
+
+    pool.markCooldown(keys[0], 60_000);
+    expect(pool.getPoolStatus()).toEqual({
+      totalKeys: 3,
+      activeKeys: 2,
+      inCooldown: 1,
+    });
+
+    pool.resetCooldowns();
+    expect(pool.getPoolStatus()).toEqual({
+      totalKeys: 3,
+      activeKeys: 3,
+      inCooldown: 0,
+    });
+  });
 });
+
 

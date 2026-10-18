@@ -13,6 +13,7 @@ export interface CompletionOptions {
   temperature?: number;
   maxTokens?: number;
   timeoutMs?: number;
+  signal?: AbortSignal;
 }
 
 export interface CompletionResult {
@@ -52,8 +53,9 @@ export interface KeySlot {
 }
 
 export function maskKey(key: string): string {
-  if (!key || key.length <= 8) return '***';
-  return `${key.slice(0, 4)}...${key.slice(-4)}`;
+  const trimmed = (key || '').trim();
+  if (trimmed.length <= 8) return '***';
+  return `${trimmed.slice(0, 4)}...${trimmed.slice(-4)}`;
 }
 
 export function parseCooldownMs(error: unknown): number {
@@ -248,6 +250,26 @@ export class ApiKeyPool {
 
     return { slot: bestSlot, waitMs: minWaitMs };
   }
+
+  public getPoolStatus(): { totalKeys: number; activeKeys: number; inCooldown: number } {
+    const slots = this.getSlots();
+    const now = Date.now();
+    let inCooldown = 0;
+    for (const slot of slots) {
+      if (slot.cooldownUntil > now) inCooldown++;
+    }
+    return {
+      totalKeys: slots.length,
+      activeKeys: slots.length - inCooldown,
+      inCooldown,
+    };
+  }
+
+  public resetCooldowns(): void {
+    for (const slot of this.slots) {
+      slot.cooldownUntil = 0;
+    }
+  }
 }
 
 export const apiKeyPool = new ApiKeyPool();
@@ -260,7 +282,11 @@ export async function chatCompletion(
   messages: ChatMessage[],
   options: CompletionOptions = {},
 ): Promise<CompletionResult> {
-  const { temperature = 0.2, maxTokens = 4096, timeoutMs = 120_000 } = options;
+  const { temperature = 0.2, maxTokens = 4096, timeoutMs = 120_000, signal } = options;
+
+  if (signal?.aborted) {
+    throw new AiProviderError('AI request was aborted', 'timeout');
+  }
 
   // Estimate prompt tokens (~3.8 characters per token)
   const totalChars = messages.reduce((acc, m) => acc + (m.content ? m.content.length : 0), 0);
@@ -279,6 +305,10 @@ export async function chatCompletion(
   let lastError: unknown = null;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (signal?.aborted) {
+      throw new AiProviderError('AI request was aborted', 'timeout');
+    }
+
     const { slot, waitMs } = apiKeyPool.selectBestKey(estimatedTotalTokens, triedKeysInRequest);
 
     if (waitMs > 0) {
@@ -292,6 +322,10 @@ export async function chatCompletion(
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const onSignalAbort = () => controller.abort();
+    if (signal) {
+      signal.addEventListener('abort', onSignalAbort, { once: true });
+    }
 
     try {
       const response = await slot.client.chat.completions.create(
@@ -360,10 +394,22 @@ export async function chatCompletion(
       break;
     } finally {
       clearTimeout(timeout);
+      if (signal) {
+        signal.removeEventListener('abort', onSignalAbort);
+      }
     }
   }
 
   if (lastError instanceof AiProviderError) throw lastError;
+
+  if (signal?.aborted || (lastError as Error)?.name === 'AbortError') {
+    throw new AiProviderError(
+      signal?.aborted
+        ? 'AI request was aborted'
+        : `AI request timed out after ${timeoutMs / 1000}s`,
+      'timeout',
+    );
+  }
 
   if (lastError instanceof OpenAI.APIError) {
     if (lastError.status === 429) {
@@ -381,13 +427,6 @@ export async function chatCompletion(
     throw new AiProviderError(
       `AI provider error: ${lastError.message}`,
       'model-error',
-    );
-  }
-
-  if ((lastError as Error)?.name === 'AbortError') {
-    throw new AiProviderError(
-      `AI request timed out after ${timeoutMs / 1000}s`,
-      'timeout',
     );
   }
 
@@ -553,10 +592,11 @@ function repairJson(jsonStr: string): string {
 
   let repaired = cleaned;
   if (inString) repaired += '"';
-  repaired = repaired.trimEnd().replace(/,\s*$/, '');
+  repaired = repaired.trimEnd().replace(/;+$/, '').replace(/,\s*$/, '');
   while (stack.length > 0) {
     repaired += stack.pop();
   }
+  repaired = repaired.trimEnd().replace(/;+$/, '');
 
   try {
     JSON.parse(repaired);
