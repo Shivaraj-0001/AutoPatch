@@ -7,18 +7,51 @@ export interface PatchValidationResult {
   warnings: string[];
   fileCount: number;
   totalSize: number;
+  modifiedFiles: string[];
 }
 
-const MAX_PATCH_SIZE = 500_000; // 500KB
-const MAX_FILE_COUNT = 50;
+export const MAX_PATCH_SIZE = 500_000; // 500KB
+export const MAX_FILE_COUNT = 50;
+
+/**
+ * Extracts unique modified file paths from a unified diff patch.
+ */
+export function extractModifiedFiles(patch: string): string[] {
+  const files = new Set<string>();
+  const gitDiffRegex = /^diff --git a\/(.+?) b\/(.+?)$/gm;
+  let match: RegExpExecArray | null;
+
+  while ((match = gitDiffRegex.exec(patch)) !== null) {
+    if (match[2]) {
+      files.add(match[2]);
+    }
+  }
+
+  if (files.size === 0) {
+    const plusRegex = /^\+\+\+ (?:b\/)?(.+?)$/gm;
+    while ((match = plusRegex.exec(patch)) !== null) {
+      if (match[1] && match[1] !== '/dev/null') {
+        files.add(match[1]);
+      }
+    }
+  }
+
+  return Array.from(files);
+}
 
 export function validatePatch(patch: string): PatchValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
-  let fileCount = 0;
 
   if (!patch || patch.trim().length === 0) {
-    return { valid: false, errors: ['Patch is empty'], warnings: [], fileCount: 0, totalSize: 0 };
+    return {
+      valid: false,
+      errors: ['Patch is empty'],
+      warnings: [],
+      fileCount: 0,
+      totalSize: 0,
+      modifiedFiles: [],
+    };
   }
 
   const totalSize = Buffer.byteLength(patch, 'utf-8');
@@ -26,10 +59,12 @@ export function validatePatch(patch: string): PatchValidationResult {
     errors.push(`Patch exceeds maximum size of ${MAX_PATCH_SIZE} bytes (got ${totalSize})`);
   }
 
-  // Parse diff headers
+  const modifiedFiles = extractModifiedFiles(patch);
+
+  // Parse diff headers for file counts
   const diffHeaders = patch.match(/^diff --git a\/.+ b\/.+$/gm) || [];
   const fileHeaders = patch.match(/^(\+\+\+|---) [ab]?\/.+$/gm) || [];
-  fileCount = diffHeaders.length || Math.ceil(fileHeaders.length / 2);
+  let fileCount = diffHeaders.length || modifiedFiles.length || Math.ceil(fileHeaders.length / 2);
 
   if (fileCount === 0) {
     // Try alternate format
@@ -41,14 +76,14 @@ export function validatePatch(patch: string): PatchValidationResult {
     errors.push(`Patch modifies too many files (${fileCount}, max ${MAX_FILE_COUNT})`);
   }
 
-  // Check for absolute paths
-  const absolutePathPattern = /^[+-]{3}\s+\/[^\/]/m;
+  // Check for absolute paths (POSIX /path or Windows C:\path)
+  const absolutePathPattern = /^[+-]{3}\s+(?:\/[^\/]|[a-zA-Z]:[/\\])/m;
   if (absolutePathPattern.test(patch)) {
     errors.push('Patch contains absolute paths');
   }
 
-  // Check for path traversal
-  if (patch.includes('/../') || patch.includes('/..\\')) {
+  // Check for path traversal sequences
+  if (/(?:^|[/\\])\.\.[/\\]/.test(patch) || patch.includes('/../') || patch.includes('/..\\')) {
     errors.push('Patch contains path traversal sequences');
   }
 
@@ -71,6 +106,7 @@ export function validatePatch(patch: string): PatchValidationResult {
     warnings,
     fileCount: fileCount || 0,
     totalSize,
+    modifiedFiles,
   };
 }
 
