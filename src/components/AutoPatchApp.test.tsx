@@ -77,6 +77,9 @@ describe('AutoPatchApp Component', () => {
     expect(html).toContain('Recent Contributions');
     expect(html).toContain('Target Open-Source Issue');
     expect(html).toContain('Autonomous Contribution Pipeline');
+    expect(html).toContain('role="main"');
+    expect(html).toContain('aria-label="Main Application Content"');
+    expect(html).toContain('class="app-body-container"');
   });
 
   it('renders HistoryPage view when initialTab is set to history', () => {

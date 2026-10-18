@@ -144,7 +144,7 @@ export const AutoPatchApp: React.FC<AutoPatchAppProps> = ({
         onToggleSidebar={toggleSidebar}
       />
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div className="app-body-container" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar
           history={history}
           selectedRunId={run?.id}
@@ -155,7 +155,11 @@ export const AutoPatchApp: React.FC<AutoPatchAppProps> = ({
           onToggleCollapse={() => setIsSidebarOpen(false)}
         />
 
-        <main style={{ flex: 1, overflowY: 'auto', height: 'calc(100vh - 61px)' }}>
+        <main
+          role="main"
+          aria-label="Main Application Content"
+          style={{ flex: 1, overflowY: 'auto', height: 'calc(100vh - 61px)' }}
+        >
           <ErrorBoundary>
             {activeTab === 'workspace' && (
               <WorkspacePage
