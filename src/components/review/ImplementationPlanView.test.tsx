@@ -76,17 +76,22 @@ describe('ImplementationPlanView Component', () => {
     expect(html).toContain('Refactor URL parser to sanitize dot-dot sequences before path resolution.');
 
     expect(html).toContain('Planned File Changes (3)');
+    expect(html).toContain('title="3 total file operations planned"');
     expect(html).toContain('src/server/router.ts');
     expect(html).toContain('Modify');
+    expect(html).toContain('title="Modify existing file"');
     expect(html).toContain('Add canonical path sanitizer in request dispatcher');
     expect(html).toContain('AC-1');
+    expect(html).toContain('title="Linked acceptance criterion AC-1"');
     expect(html).toContain('AC-2');
 
     expect(html).toContain('src/server/security.ts');
     expect(html).toContain('Create');
+    expect(html).toContain('title="Create new file"');
 
     expect(html).toContain('src/server/legacy-resolver.ts');
     expect(html).toContain('Delete');
+    expect(html).toContain('title="Delete obsolete file"');
   });
 
   it('renders structured test plan items', () => {
@@ -118,6 +123,7 @@ describe('ImplementationPlanView Component', () => {
     expect(html).toContain('Risks &amp; Mitigations');
     expect(html).toContain('Risk: High latency on deep recursive paths');
     expect(html).toContain('medium');
+    expect(html).toContain('title="Risk severity level: medium"');
     expect(html).toContain('Mitigation: Memoize resolved canonical paths in LRU cache');
     expect(html).toContain('Risk: Potential regression in URL encoded filenames');
     expect(html).toContain('Mitigation: Add test suite covering percent-encoded dots and slashes');

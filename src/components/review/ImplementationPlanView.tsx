@@ -39,13 +39,29 @@ export const ImplementationPlanView: React.FC<ImplementationPlanViewProps> = ({
   const getActionBadge = (action: string) => {
     switch (action) {
       case 'modify':
-        return <Badge variant="blue" icon={<FileEdit size={11} />}>Modify</Badge>;
+        return (
+          <Badge variant="blue" icon={<FileEdit size={11} />} title="Modify existing file">
+            Modify
+          </Badge>
+        );
       case 'create':
-        return <Badge variant="green" icon={<PlusCircle size={11} />}>Create</Badge>;
+        return (
+          <Badge variant="green" icon={<PlusCircle size={11} />} title="Create new file">
+            Create
+          </Badge>
+        );
       case 'delete':
-        return <Badge variant="rose" icon={<Trash2 size={11} />}>Delete</Badge>;
+        return (
+          <Badge variant="rose" icon={<Trash2 size={11} />} title="Delete obsolete file">
+            Delete
+          </Badge>
+        );
       default:
-        return <Badge variant="neutral">{action}</Badge>;
+        return (
+          <Badge variant="neutral" title={`File action: ${action}`}>
+            {action}
+          </Badge>
+        );
     }
   };
 
@@ -101,7 +117,10 @@ export const ImplementationPlanView: React.FC<ImplementationPlanViewProps> = ({
                 Implementation Strategy & Plan
               </h3>
               {plannedChangesList.length > 0 && (
-                <Badge variant="blue">
+                <Badge
+                  variant="blue"
+                  title={`${plannedChangesList.length} total file operations planned`}
+                >
                   {`${plannedChangesList.length} Planned Changes`}
                 </Badge>
               )}
@@ -221,6 +240,7 @@ export const ImplementationPlanView: React.FC<ImplementationPlanViewProps> = ({
                         {change.relatedCriteria.map((rc) => (
                           <span
                             key={rc}
+                            title={`Linked acceptance criterion ${rc}`}
                             style={{
                               fontFamily: 'var(--font-mono)',
                               fontSize: '0.7rem',
@@ -298,6 +318,7 @@ export const ImplementationPlanView: React.FC<ImplementationPlanViewProps> = ({
                               ? 'amber'
                               : 'neutral'
                           }
+                          title={`Risk severity level: ${rm.severity}`}
                         >
                           {rm.severity}
                         </Badge>
