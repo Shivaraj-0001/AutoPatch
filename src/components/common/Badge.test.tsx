@@ -44,4 +44,21 @@ describe('Badge Component', () => {
     expect(html).toContain('cursor:pointer');
     expect(html).toContain('opacity:0.8');
   });
+
+  it('renders small size and title attribute when provided', () => {
+    const html = renderToString(
+      <Badge size="sm" title="Tooltip Title">Small Badge</Badge>
+    );
+    expect(html).toContain('badge-sm');
+    expect(html).toContain('title="Tooltip Title"');
+  });
+
+  it('applies accessibility attributes and clickable class when onClick is provided', () => {
+    const html = renderToString(
+      <Badge onClick={() => {}}>Interactive</Badge>
+    );
+    expect(html).toContain('badge-clickable');
+    expect(html).toContain('role="button"');
+    expect(html).toContain('tabindex="0"');
+  });
 });
