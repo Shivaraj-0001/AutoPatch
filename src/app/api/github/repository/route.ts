@@ -8,18 +8,35 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const repoUrl = searchParams.get('url');
+    const ownerParam = searchParams.get('owner');
+    const repoParam = searchParams.get('repo');
 
-    if (!repoUrl) {
-      return NextResponse.json({ error: 'url query parameter is required' }, { status: 400 });
+    let owner: string;
+    let repo: string;
+
+    if (ownerParam && repoParam) {
+      owner = ownerParam.trim();
+      repo = repoParam.trim();
+    } else if (repoUrl) {
+      const urlParsed = parseGitHubUrl(repoUrl);
+      if (!urlParsed) {
+        return NextResponse.json({ error: 'Invalid GitHub repository URL' }, { status: 400 });
+      }
+      owner = urlParsed.owner;
+      repo = urlParsed.repo;
+    } else {
+      return NextResponse.json(
+        { error: 'url query parameter or owner and repo parameters are required' },
+        { status: 400 },
+      );
     }
 
-    const urlParsed = parseGitHubUrl(repoUrl);
-    if (!urlParsed) {
-      return NextResponse.json({ error: 'Invalid GitHub repository URL' }, { status: 400 });
-    }
-
-    const repo = await githubService.getRepository(urlParsed.owner, urlParsed.repo);
-    return NextResponse.json(repo);
+    const repoData = await githubService.getRepository(owner, repo);
+    return NextResponse.json(repoData, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      },
+    });
   } catch (error) {
     if (error instanceof githubService.GitHubApiError) {
       return NextResponse.json(

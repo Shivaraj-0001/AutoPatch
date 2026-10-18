@@ -30,13 +30,20 @@ export async function POST(request: NextRequest) {
     const comments = await githubService.getIssueComments(urlParsed.owner, urlParsed.repo, issueNumber, 5);
     issue.comments = comments;
 
-    return NextResponse.json({
-      issue,
-      repository: {
-        owner: urlParsed.owner,
-        repo: urlParsed.repo,
+    return NextResponse.json(
+      {
+        issue,
+        repository: {
+          owner: urlParsed.owner,
+          repo: urlParsed.repo,
+        },
       },
-    });
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      },
+    );
   } catch (error) {
     if (error instanceof githubService.GitHubApiError) {
       return NextResponse.json(

@@ -83,6 +83,7 @@ describe('GitHub API Routes', () => {
         owner: 'facebook',
         repo: 'react',
       });
+      expect(res.headers.get('Cache-Control')).toContain('no-store');
     });
 
     it('handles GitHubApiError properly', async () => {
@@ -130,13 +131,13 @@ describe('GitHub API Routes', () => {
       expect(repoDynamic).toBe('force-dynamic');
     });
 
-    it('returns 400 when url query parameter is missing', async () => {
+    it('returns 400 when required query parameters are missing', async () => {
       const req = new NextRequest('http://localhost:3000/api/github/repository');
       const res = await repoGet(req);
       const data = await res.json();
 
       expect(res.status).toBe(400);
-      expect(data.error).toBe('url query parameter is required');
+      expect(data.error).toBe('url query parameter or owner and repo parameters are required');
     });
 
     it('returns 400 when url query parameter is not a valid GitHub URL', async () => {
@@ -148,7 +149,7 @@ describe('GitHub API Routes', () => {
       expect(data.error).toBe('Invalid GitHub repository URL');
     });
 
-    it('fetches repository details successfully', async () => {
+    it('fetches repository details successfully via url query parameter', async () => {
       const mockRepo = {
         owner: 'facebook',
         repo: 'react',
@@ -170,6 +171,31 @@ describe('GitHub API Routes', () => {
       expect(res.status).toBe(200);
       expect(data.fullName).toBe('facebook/react');
       expect(data.stars).toBe(200000);
+      expect(res.headers.get('Cache-Control')).toContain('no-store');
+    });
+
+    it('fetches repository details successfully via owner and repo query parameters', async () => {
+      const mockRepo = {
+        owner: 'vercel',
+        repo: 'next.js',
+        fullName: 'vercel/next.js',
+        defaultBranch: 'canary',
+        description: 'The React Framework',
+        language: 'TypeScript',
+        stars: 120000,
+        forks: 26000,
+        openIssues: 2000,
+      };
+
+      const spy = vi.spyOn(githubService, 'getRepository').mockResolvedValue(mockRepo as any);
+
+      const req = new NextRequest('http://localhost:3000/api/github/repository?owner=vercel&repo=next.js');
+      const res = await repoGet(req);
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(spy).toHaveBeenCalledWith('vercel', 'next.js');
+      expect(data.fullName).toBe('vercel/next.js');
     });
 
     it('handles GitHubApiError properly for repository endpoint', async () => {
