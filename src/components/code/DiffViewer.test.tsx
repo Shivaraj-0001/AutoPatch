@@ -46,7 +46,9 @@ describe('DiffViewer Component', () => {
     );
 
     expect(html).toContain('Copy Patch');
+    expect(html).toContain('aria-label="Copy patch to clipboard"');
     expect(html).toContain('href="/api/runs/run-777/patch?revision=1"');
+    expect(html).toContain('aria-label="Download .patch file for Revision 1"');
     expect(html).toContain('Download .patch');
   });
 

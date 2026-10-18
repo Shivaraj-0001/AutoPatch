@@ -313,6 +313,8 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             type="button"
+            aria-label={copied ? 'Diff copied to clipboard' : 'Copy patch to clipboard'}
+            title="Copy patch to clipboard"
             onClick={(e) => {
               e.stopPropagation();
               handleCopy();
@@ -332,6 +334,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
               style={{ fontSize: '0.775rem', padding: '6px 12px' }}
               onClick={(e) => e.stopPropagation()}
               title={`Download .patch for Revision ${activeRev?.revisionNumber}`}
+              aria-label={`Download .patch file for Revision ${activeRev?.revisionNumber}`}
             >
               <Download size={14} />
               <span>Download .patch</span>
@@ -340,6 +343,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
 
           {collapsible && (
             <div
+              aria-hidden="true"
               style={{
                 width: '28px',
                 height: '28px',
