@@ -121,7 +121,7 @@ export function parseIssueInput(input: string): number | null {
 }
 
 
-function isValidGitHubName(name: string): boolean {
+export function isValidGitHubName(name: string): boolean {
   return /^[a-zA-Z0-9._-]+$/.test(name) && name.length <= 100;
 }
 
