@@ -8,6 +8,9 @@ const AutoPatchApp = dynamic(
     ssr: false,
     loading: () => (
       <div
+        role="status"
+        aria-live="polite"
+        aria-label="Loading AutoPatch Application"
         style={{
           display: 'flex',
           height: '100vh',
@@ -21,6 +24,7 @@ const AutoPatchApp = dynamic(
       >
         <div style={{ textAlign: 'center' }}>
           <div
+            aria-hidden="true"
             style={{
               width: '40px',
               height: '40px',
