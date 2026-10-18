@@ -136,15 +136,25 @@ Do not include any text before or after the JSON.`;
       return aChanged - bChanged;
     });
 
-    let totalCharsIncluded = 0;
-    const maxChars = 12000;
+    let extraCharsIncluded = 0;
+    const maxExtraChars = 12000;
     for (const [path, content] of sortedEntries) {
-      if (totalCharsIncluded >= maxChars) break;
-      const budgetRemaining = maxChars - totalCharsIncluded;
-      const sliceLen = Math.min((content || '').length, 6000, budgetRemaining);
-      const fileSnippet = (content || '').slice(0, sliceLen);
-      totalCharsIncluded += fileSnippet.length;
-      prompt += `\n--- ${path} ---\n\`\`\`\n${fileSnippet}\n\`\`\`\n`;
+      const isChanged = changedFileSet.has(path);
+      const text = content || '';
+      if (isChanged) {
+        // Changed files are always included with their per-file slice so later changed files are never starved
+        const snippet = text.slice(0, 6000);
+        prompt += `\n--- ${path} ---\n\`\`\`\n${snippet}\n\`\`\`\n`;
+      } else {
+        // Non-changed context files are bounded by the extra context budget
+        if (extraCharsIncluded >= maxExtraChars) break;
+        const budgetRemaining = maxExtraChars - extraCharsIncluded;
+        const sliceLen = Math.min(text.length, 4000, budgetRemaining);
+        if (sliceLen <= 0) break;
+        const snippet = text.slice(0, sliceLen);
+        extraCharsIncluded += snippet.length;
+        prompt += `\n--- ${path} ---\n\`\`\`\n${snippet}\n\`\`\`\n`;
+      }
     }
 
     prompt += `\nReview the patch and respond with your findings as a JSON object.`;

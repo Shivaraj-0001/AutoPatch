@@ -123,6 +123,68 @@ describe('ReviewAgentImpl', () => {
     expect(prompt).toContain('Verify whether previously noted suggestions or issues have been resolved');
   });
 
+  it('includes all changed files without starvation even when preceding changed files are large', () => {
+    const agent = new ReviewAgentImpl();
+    const largeContentA = 'A'.repeat(8000);
+    const largeContentB = 'B'.repeat(8000);
+
+    const inputWithMultipleLargeChangedFiles: ReviewAgentInput = {
+      ...sampleInput,
+      codingProposal: {
+        ...sampleInput.codingProposal,
+        filesChanged: [
+          { path: 'src/file-a.ts', action: 'modify' },
+          { path: 'src/file-b.ts', action: 'modify' },
+        ],
+      },
+      sourceFiles: {
+        'src/file-a.ts': largeContentA,
+        'src/file-b.ts': largeContentB,
+      },
+    };
+
+    const prompt = (agent as any).getUserPrompt(inputWithMultipleLargeChangedFiles);
+
+    expect(prompt).toContain('--- src/file-a.ts ---');
+    expect(prompt).toContain('--- src/file-b.ts ---');
+    // Ensure both files received up to 6000 chars rather than file-b being starved
+    expect(prompt).toContain('A'.repeat(6000));
+    expect(prompt).toContain('B'.repeat(6000));
+  });
+
+  it('bounds non-changed context files by extra context budget while preserving changed files', () => {
+    const agent = new ReviewAgentImpl();
+    const largeHelper = 'C'.repeat(5000);
+
+    const inputWithExcessiveContext: ReviewAgentInput = {
+      ...sampleInput,
+      codingProposal: {
+        ...sampleInput.codingProposal,
+        filesChanged: [{ path: 'src/auth/session.ts', action: 'modify' }],
+      },
+      sourceFiles: {
+        'src/auth/session.ts': 'export const session = 1;',
+        'src/ctx-1.ts': largeHelper,
+        'src/ctx-2.ts': largeHelper,
+        'src/ctx-3.ts': largeHelper,
+        'src/ctx-4.ts': largeHelper,
+      },
+    };
+
+    const prompt = (agent as any).getUserPrompt(inputWithExcessiveContext);
+
+    // Changed file must be preserved
+    expect(prompt).toContain('--- src/auth/session.ts ---');
+
+    // Context files up to 12000 chars extra are included (4000 + 4000 + 4000)
+    expect(prompt).toContain('--- src/ctx-1.ts ---');
+    expect(prompt).toContain('--- src/ctx-2.ts ---');
+    expect(prompt).toContain('--- src/ctx-3.ts ---');
+
+    // 4th context file exceeds 12000 chars budget and must be omitted
+    expect(prompt).not.toContain('--- src/ctx-4.ts ---');
+  });
+
   it('executes review analysis and returns validated ReviewReport', async () => {
     const agent = new ReviewAgentImpl();
 
