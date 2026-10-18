@@ -35,6 +35,7 @@ export interface ReviewFindingsListProps {
 }
 
 export interface ReviewRevisionItem {
+  id: string;
   revisionNumber: number;
   label: string;
   isLatest: boolean;
@@ -73,6 +74,7 @@ export const ReviewFindingsList: React.FC<ReviewFindingsListProps> = ({
         if (r.reviewReport) {
           const revNum = r.revision || idx + 1;
           items.push({
+            id: `hist-${idx}-${revNum}`,
             revisionNumber: revNum,
             label: idx === 0 ? 'Initial Audit' : `Feedback Loop Audit #${idx}`,
             isLatest: false,
@@ -86,8 +88,11 @@ export const ReviewFindingsList: React.FC<ReviewFindingsListProps> = ({
       // If active report is different from last recorded report
       const lastHistReport = items[items.length - 1]?.report;
       if (report && report !== lastHistReport && !items.some((it) => it.report === report)) {
+        const maxPrevRev = items.reduce((max, it) => Math.max(max, it.revisionNumber), 0);
+        const activeRevNum = Math.max(maxPrevRev + 1, revisionCount || items.length + 1);
         items.push({
-          revisionNumber: items.length + 1,
+          id: `active-${items.length}-${activeRevNum}`,
+          revisionNumber: activeRevNum,
           label: `Feedback Audit #${items.length}`,
           isLatest: true,
           report,
@@ -107,6 +112,7 @@ export const ReviewFindingsList: React.FC<ReviewFindingsListProps> = ({
     // Fallback single review
     return [
       {
+        id: `single-${revisionCount || 1}`,
         revisionNumber: revisionCount || 1,
         label: 'Initial Audit',
         isLatest: true,
@@ -115,21 +121,23 @@ export const ReviewFindingsList: React.FC<ReviewFindingsListProps> = ({
     ];
   }, [revisionHistory, report, revisionCount]);
 
-  const latestRevNum = reviewRevList[reviewRevList.length - 1]?.revisionNumber || 1;
+  const latestItem = reviewRevList[reviewRevList.length - 1];
+  const latestRevId = latestItem?.id || 'single-audit';
+  const latestRevNum = latestItem?.revisionNumber || 1;
 
   // ─── Selected review revision state, always defaulting to latest ───────────
-  const [selectedRevNum, setSelectedRevNum] = useState<number>(latestRevNum);
-  const prevLatestRef = useRef(latestRevNum);
+  const [selectedRevId, setSelectedRevId] = useState<string>(latestRevId);
+  const prevLatestRef = useRef(latestRevId);
 
   useEffect(() => {
-    if (latestRevNum !== prevLatestRef.current) {
-      setSelectedRevNum(latestRevNum);
-      prevLatestRef.current = latestRevNum;
+    if (latestRevId !== prevLatestRef.current) {
+      setSelectedRevId(latestRevId);
+      prevLatestRef.current = latestRevId;
     }
-  }, [latestRevNum]);
+  }, [latestRevId]);
 
   const activeRev =
-    reviewRevList.find((r) => r.revisionNumber === selectedRevNum) ||
+    reviewRevList.find((r) => r.id === selectedRevId) ||
     reviewRevList[reviewRevList.length - 1];
 
   const activeReport = activeRev?.report || report;
@@ -150,7 +158,7 @@ export const ReviewFindingsList: React.FC<ReviewFindingsListProps> = ({
     }
   };
 
-  const getSeverityBadge = (severity: ReviewFinding['severity']) => {
+  const getSeverityBadge = (severity: ReviewFinding['severity'] | string) => {
     switch (severity) {
       case 'critical':
         return <Badge variant="rose" icon={<AlertOctagon size={12} />} title="Critical severity finding">Critical</Badge>;
@@ -160,6 +168,16 @@ export const ReviewFindingsList: React.FC<ReviewFindingsListProps> = ({
         return <Badge variant="amber" icon={<AlertTriangle size={12} />} title="Minor severity finding">Minor</Badge>;
       case 'suggestion':
         return <Badge variant="cyan" icon={<Info size={12} />} title="Suggestion for enhancement">Suggestion</Badge>;
+      default:
+        return (
+          <Badge
+            variant="neutral"
+            icon={<Info size={12} />}
+            title={`Severity finding: ${severity || 'unknown'}`}
+          >
+            {severity ? String(severity).charAt(0).toUpperCase() + String(severity).slice(1) : 'Unknown'}
+          </Badge>
+        );
     }
   };
 
@@ -328,13 +346,13 @@ export const ReviewFindingsList: React.FC<ReviewFindingsListProps> = ({
               </div>
 
               {reviewRevList.map((r) => {
-                const isSelected = r.revisionNumber === selectedRevNum;
+                const isSelected = r.id === selectedRevId;
                 return (
                   <button
-                    key={r.revisionNumber}
+                    key={r.id}
                     type="button"
                     aria-label={`Switch to Review #${r.revisionNumber} audit`}
-                    onClick={() => setSelectedRevNum(r.revisionNumber)}
+                    onClick={() => setSelectedRevId(r.id)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -416,7 +434,7 @@ export const ReviewFindingsList: React.FC<ReviewFindingsListProps> = ({
               <button
                 type="button"
                 aria-label={`Jump to Latest Review #${latestRevNum}`}
-                onClick={() => setSelectedRevNum(latestRevNum)}
+                onClick={() => setSelectedRevId(latestRevId)}
                 style={{
                   background: 'rgba(244, 63, 94, 0.15)',
                   border: '1px solid rgba(244, 63, 94, 0.3)',

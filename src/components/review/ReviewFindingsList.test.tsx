@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import { ReviewFindingsList } from './ReviewFindingsList';
-import type { ReviewReport, RevisionRecord } from '../../lib/types';
+import type { ReviewReport, ReviewFinding, RevisionRecord } from '../../lib/types';
 
 describe('ReviewFindingsList Component', () => {
   const sampleReportWithFindings: ReviewReport = {
@@ -192,6 +192,51 @@ describe('ReviewFindingsList Component', () => {
     expect(html).toContain('aria-expanded="true"');
     expect(html).toContain('aria-label="Collapse Independent Review Audit"');
     expect(html).toContain('Detailed Findings (2)');
+  });
+
+  it('renders fallback badge for unknown severity value', () => {
+    const reportWithCustomSeverity: ReviewReport = {
+      ...sampleReportWithFindings,
+      findings: [
+        {
+          severity: 'info' as unknown as ReviewFinding['severity'],
+          category: 'other',
+          description: 'Informational note from external scanner',
+        },
+      ],
+    };
+
+    const html = renderToString(<ReviewFindingsList report={reportWithCustomSeverity} />);
+    expect(html).toContain('Info');
+    expect(html).toContain('title="Severity finding: info"');
+    expect(html).toContain('Informational note from external scanner');
+  });
+
+  it('assigns collision-free audit revision when history has duplicate or overlapping revision numbers', () => {
+    const historyWithOverlap: RevisionRecord[] = [
+      {
+        attempt: 1,
+        revision: 2,
+        timestamp: '2026-10-18T10:00:00Z',
+        codingProposal: {
+          patch: '--- a/router.ts\n+++ b/router.ts\n',
+          changeSummary: 'First revision',
+        },
+        reviewReport: sampleReportWithFindings,
+      },
+    ];
+
+    const html = renderToString(
+      <ReviewFindingsList
+        report={sampleApprovedReport}
+        revisionHistory={historyWithOverlap}
+      />
+    );
+
+    expect(html).toContain('Audits:');
+    expect(html).toContain('Review #2');
+    expect(html).toContain('Review #3');
+    expect(html).toContain('Latest');
   });
 
   it('applies custom className, id, and style props to container', () => {
