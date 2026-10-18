@@ -67,15 +67,19 @@ describe('FinalReport Component', () => {
     const html = renderToString(<FinalReport run={baseRun} />);
 
     expect(html).toContain('Criteria Satisfied');
+    expect(html).toContain('title="2 of 2 acceptance criteria satisfied"');
     expect(html).toContain('2 / 2');
 
     expect(html).toContain('Files Modified');
+    expect(html).toContain('title="2 source files modified in coding proposal"');
     expect(html).toContain('2');
 
     expect(html).toContain('Revision Cycles');
+    expect(html).toContain('title="2 of 3 revision cycles completed"');
     expect(html).toContain('2 / 3');
 
     expect(html).toContain('Review Status');
+    expect(html).toContain('title="Patch approved for contribution"');
     expect(html).toContain('Ready to Apply');
   });
 
@@ -91,6 +95,7 @@ describe('FinalReport Component', () => {
     const html = renderToString(<FinalReport run={runNeedingRevision} />);
 
     expect(html).toContain('Needs Polish');
+    expect(html).toContain('title="Additional revision recommended by reviewer"');
   });
 
   it('renders download button with patch accessibility attributes', () => {

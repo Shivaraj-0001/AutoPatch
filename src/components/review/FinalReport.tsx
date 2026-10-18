@@ -125,6 +125,7 @@ export const FinalReport: React.FC<FinalReportProps> = ({ run, onRefine, classNa
         }}
       >
         <div
+          title={`${satisfiedCriteria} of ${totalCriteria} acceptance criteria satisfied`}
           style={{
             padding: '14px',
             borderRadius: 'var(--radius-md)',
@@ -141,6 +142,7 @@ export const FinalReport: React.FC<FinalReportProps> = ({ run, onRefine, classNa
         </div>
 
         <div
+          title={`${filesCount} source files modified in coding proposal`}
           style={{
             padding: '14px',
             borderRadius: 'var(--radius-md)',
@@ -157,6 +159,7 @@ export const FinalReport: React.FC<FinalReportProps> = ({ run, onRefine, classNa
         </div>
 
         <div
+          title={`${run.revisionCount} of ${run.maxRevisions ?? 'unlimited'} revision cycles completed`}
           style={{
             padding: '14px',
             borderRadius: 'var(--radius-md)',
@@ -168,11 +171,12 @@ export const FinalReport: React.FC<FinalReportProps> = ({ run, onRefine, classNa
             Revision Cycles
           </div>
           <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--accent-amber)' }}>
-            {`${run.revisionCount} / ${run.maxRevisions}`}
+            {`${run.revisionCount} / ${run.maxRevisions ?? '∞'}`}
           </div>
         </div>
 
         <div
+          title={run.reviewReport?.revisionRequired ? 'Additional revision recommended by reviewer' : 'Patch approved for contribution'}
           style={{
             padding: '14px',
             borderRadius: 'var(--radius-md)',
